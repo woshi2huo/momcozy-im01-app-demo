@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Momcozy IM01 冰淇淋机 APP 全页面交互设计原型"
+    />
+    <title>Momcozy IM01 · APP 页面设计</title>
+    <link rel="stylesheet" href="./styles.css?v=20261014-16" />
+  </head>
+  <body>
+    <div class="prototype-shell">
+      <aside class="catalog" aria-label="页面目录">
+        <header class="catalog-header">
+          <div class="brand-mark" aria-hidden="true"><span></span></div>
+          <div>
+            <p class="eyebrow">MOMCOZY 3.0</p>
+            <h1>IM01 页面设计</h1>
+            <p>冰淇淋机 · 全流程原型</p>
+          </div>
+        </header>
+
+        <div class="catalog-tools">
+          <label class="search-field">
+            <span>页面搜索</span>
+            <input id="page-search" type="search" placeholder="输入页面或功能" />
+          </label>
+          <div class="version-filter" id="version-filter" aria-label="版本筛选"></div>
+        </div>
+
+        <nav class="catalog-nav" id="catalog-nav"></nav>
+
+        <footer class="catalog-footer">
+          <button class="text-button" type="button" data-route="page-map">
+            查看页面地图与版本边界
+          </button>
+          <p>设置入口与设置页面已按要求排除。</p>
+        </footer>
+      </aside>
+
+      <main class="preview-stage">
+        <header class="stage-header">
+          <div>
+            <p class="eyebrow" id="route-group">设备入口</p>
+            <h2 id="route-title">设备</h2>
+            <p id="route-node">设备 Tab → 冰淇淋机卡片</p>
+          </div>
+          <div class="demo-controls" aria-label="演示控制">
+            <button
+              id="theme-toggle"
+              class="control-button"
+              type="button"
+              aria-label="切换深浅色模式"
+              title="切换深浅色模式"
+            >
+              深色
+            </button>
+            <button
+              id="language-toggle"
+              class="control-button"
+              type="button"
+              aria-label="Switch to English"
+              title="Switch to English"
+            >
+              EN
+            </button>
+          </div>
+        </header>
+
+        <section class="phone-workspace" aria-label="手机页面预览">
+          <div class="phone-shadow" aria-hidden="true"></div>
+          <div class="phone-frame">
+            <div class="phone-speaker" aria-hidden="true"></div>
+            <div class="phone-screen">
+              <div class="system-status" aria-hidden="true">
+                <span>9:41</span>
+                <span class="system-status-right">5G&nbsp;&nbsp;100%</span>
+              </div>
+              <div id="app" class="app-viewport" aria-live="polite"></div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="stage-footer">
+          <div>
+            <span class="version-badge" id="route-version">V1.0</span>
+            <span id="route-index">01 / 55</span>
+          </div>
+          <p id="route-note">用户从 Momcozy APP 的设备板块进入冰淇淋机。</p>
+        </footer>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js?v=20261014-16"></script>
+  </body>
+</html>

@@ -679,7 +679,7 @@ function pageIntro(eyebrowZh, eyebrowEn, titleZh, titleEn, descZh, descEn) {
   return `<div class="page-intro"><p class="eyebrow">${T(eyebrowZh, eyebrowEn)}</p><h2>${T(titleZh, titleEn)}</h2><p>${T(descZh, descEn)}</p></div>`;
 }
 
-function mobilePage({ titleZh, titleEn, captionZh = "", captionEn = "", back = "", activeTab = "", body = "", right = "", hideHeader = false, pageClass = "" }) {
+function mobilePage({ titleZh, titleEn, captionZh = "", captionEn = "", back = "", activeTab = "", body = "", footerActions = "", footerClass = "", right = "", hideHeader = false, pageClass = "" }) {
   const topLevel = Boolean(activeTab);
   return `
     <section class="mobile-page${topLevel ? " has-tabbar" : ""}${pageClass ? ` ${pageClass}` : ""}">
@@ -689,6 +689,7 @@ function mobilePage({ titleZh, titleEn, captionZh = "", captionEn = "", back = "
         ${right || "<span></span>"}
       </header>`}
       <div class="mobile-scroll">${body}</div>
+      ${footerActions ? `<div class="mobile-footer${footerClass ? ` ${footerClass}` : ""}">${footerActions}</div>` : ""}
       ${topLevel ? tabbar(activeTab, pageClass === "devices-empty-page") : ""}
     </section>`;
 }
@@ -1776,6 +1777,7 @@ function renderMvpChooseRecipe() {
     titleEn: "Make ice cream",
     pageClass: "make-flow-page make-recipe-page",
     back: "icecream",
+    footerActions: button("下一步", "Next", "make-portion", "primary", true),
     body: `
       ${stepper(1, 4, false, true)}
       <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 1 步", "Step 1")}</p><h2>${T("选择食谱", "Choose recipe")}</h2></div><p>${T("选择本次制作的食谱，并查看潜在过敏原提示。", "Choose a recipe for this batch and review its potential allergen notice.")}</p></div>
@@ -1789,8 +1791,7 @@ function renderMvpChooseRecipe() {
           <p class="make-allergen-notice-copy">${T("请核对实际食材包装、品牌配方及交叉接触信息。", "Check actual ingredient labels, brand recipes, and cross-contact information.")}</p>
           <p class="make-allergen-notice-footnote">${T("仅作风险提示，不代表食谱适合所有人。", "A risk notice only; this does not mean the recipe is suitable for everyone.")}</p>
         </section>
-      </div>
-      <div class="sticky-actions">${button("下一步", "Next", "make-portion", "primary", true)}</div>`,
+      </div>`,
   });
 }
 
@@ -1803,13 +1804,14 @@ function renderMakePortion() {
   }).join("");
   return mobilePage({
     titleZh: "制作冰淇淋", titleEn: "Make ice cream", back: "make-recipe", pageClass: "make-flow-page",
+    footerActions: `${button("上一步", "Previous", "make-recipe", "secondary")}${button("下一步", "Next", "freeze-confirm", "primary", false, 'data-transition="create-batch"')}`,
+    footerClass: "flow-actions",
     body: `${stepper(2, 4, false, true)}
       <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 2 步", "Step 2")}</p><h2>${T("确认份量与杯子", "Confirm portion & cup")}</h2></div><p>${escapeHtml(T(recipe.zh, recipe.en))}</p></div>
       <div class="section-block">${sectionHeading("制作份量（ml）", "Portion (ml)")}<div class="portion-selector">${["50", "100", "250", "500"].map((value) => `<button type="button" class="${state.portion === value ? "is-selected" : ""}" data-action="select-portion" data-value="${value}" aria-pressed="${state.portion === value}">${value}</button>`).join("")}</div></div>
       <div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad" data-recipe-ingredients aria-live="polite">${recipeIngredientRows(getRecipeIngredients(state.portion, state.batchRecipeIndex))}</div></div>
       ${recipeCalorieSection(recipe.index)}
-      <div class="section-block">${sectionHeading("使用杯子", "Cup")}<div class="card card-pad"><div class="cup-selector">${cupOptions}</div><p class="selection-note">${T(`已选择 ${selectedCup.cupId}。APP 状态仅供参考，请以手中的实体杯为准；确认后会更新该杯的当前任务。`, `${selectedCup.cupId} selected. App status is for reference only; use the physical cup in hand. Confirming updates this cup's current task.`)}</p></div></div>
-      <div class="sticky-actions flow-actions">${button("上一步", "Previous", "make-recipe", "secondary")}${button("下一步", "Next", "freeze-confirm", "primary", false, 'data-transition="create-batch"')}</div>`,
+      <div class="section-block">${sectionHeading("使用杯子", "Cup")}<div class="card card-pad"><div class="cup-selector">${cupOptions}</div><p class="selection-note">${T(`已选择 ${selectedCup.cupId}。APP 状态仅供参考，请以手中的实体杯为准；确认后会更新该杯的当前任务。`, `${selectedCup.cupId} selected. App status is for reference only; use the physical cup in hand. Confirming updates this cup's current task.`)}</p></div></div>`,
   });
 }
 
@@ -1865,6 +1867,10 @@ function renderMvpPrepFreeze() {
   return mobilePage({
     titleZh: "准备食材并冷冻", titleEn: "Prepare & freeze ingredients", captionZh: ready ? "步骤 3–4/4" : "步骤 3/4", captionEn: ready ? "Steps 3–4/4" : "Step 3/4", back: "icecream",
     pageClass: "make-flow-page",
+    footerActions: frozen
+      ? `${ready ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance" data-freeze-default-action') : button("返回详情页", "Back to details", "icecream", "primary", true, 'data-freeze-default-action')}<div data-freeze-time-save hidden>${button("保存入冻时间", "Save freezer time", "", "primary", true, 'data-action="start-freeze-countdown"')}</div>`
+      : `${button("上一步", "Previous", "", "secondary", false, 'data-action="flow-step" data-value="2"')}${button("开始倒计时", "Start countdown", "", "primary", false, 'data-action="start-freeze-countdown"')}`,
+    footerClass: frozen ? "" : "flow-actions",
     body: `${stepper(ready ? 4 : 3, 4, false, true)}<div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 3 步", "Step 3")}</p><h2>${T("准备食材并冷冻", "Prepare & freeze ingredients")}</h2></div><p>${T(runtime.recipeZh || "混合食材、装杯并水平冷冻。", runtime.recipeEn || "Mix, fill, and freeze level.")}</p></div>
       <details class="tutorial-disclosure" ${tutorialOpen ? "open" : ""}>
         <summary><span>${T("备料与冷冻教程", "Prep & freezing tutorial")}</span><small>${T(tutorialOpen ? "前 3 次制作默认展开" : "按需展开步骤", tutorialOpen ? "Expanded for the first 3 batches" : "Expand when needed")}</small><span class="tutorial-toggle"><b class="tutorial-expand">${T("展开", "Expand")}</b><b class="tutorial-collapse">${T("收起", "Collapse")}</b></span></summary>
@@ -1885,10 +1891,9 @@ function renderMvpPrepFreeze() {
         </div>
         <button type="button" class="tutorial-guide-link" data-action="open-support-guide" data-value="7">${T("查看完整设备教程", "View full device guide")}</button>
       </details>
-      <div class="section-block">${sectionHeading("记录入冻时间", "Record freezer time")}<div class="card card-pad"><div class="field"><label for="freeze-start">${T("实际放入冷冻室的时间", "When the cup entered the freezer")}</label><input id="freeze-start" type="datetime-local" value="${frozenAt}" max="${formatDateTimeInput(new Date())}" /></div><p class="readable-copy">${T("至少冷冻 24 小时，之后仍需确认食材完全冻实。", "Freeze for at least 24 hours, then confirm the mixture is fully frozen.")}</p>${frozen ? `<div data-freeze-time-save hidden>${button("保存入冻时间", "Save freezer time", "", "secondary", true, 'data-action="start-freeze-countdown"')}</div>` : ""}</div></div>
+      <div class="section-block">${sectionHeading("记录入冻时间", "Record freezer time")}<div class="card card-pad"><div class="field"><label for="freeze-start">${T("实际放入冷冻室的时间", "When the cup entered the freezer")}</label><input id="freeze-start" type="datetime-local" value="${frozenAt}" max="${formatDateTimeInput(new Date())}" /></div><p class="readable-copy">${T("至少冷冻 24 小时，之后仍需确认食材完全冻实。", "Freeze for at least 24 hours, then confirm the mixture is fully frozen.")}</p></div></div>
       ${frozen ? renderFreezeCountdownContent(false) : ""}
-      ${ready ? `<section id="machine-guide-inline" class="section-block inline-machine-guide">${renderMachineGuideContent(cup, true)}</section>` : ""}
-      <div class="sticky-actions ${frozen ? "" : "flow-actions"}">${ready ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance"') : frozen ? button("返回详情页", "Back to details", "icecream", "primary", true) : `${button("上一步", "Previous", "", "secondary", false, 'data-action="flow-step" data-value="2"')}${button("开始倒计时", "Start countdown", "", "primary", false, 'data-action="start-freeze-countdown"')}`}</div>`,
+      ${ready ? `<section id="machine-guide-inline" class="section-block inline-machine-guide">${renderMachineGuideContent(cup, true)}</section>` : ""}`,
   });
 }
 
@@ -1966,8 +1971,8 @@ function renderMvpMachineGuide() {
     captionEn: "Step 4/4",
     back: "icecream",
     pageClass: "make-flow-page",
-    body: `${stepper(4, 4, false, true)}${renderMachineGuideContent(cup)}
-      <div class="sticky-actions">${canEndGuidance ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance"') : button("返回详情页", "Back to details", "icecream", "primary", true)}</div>`,
+    footerActions: canEndGuidance ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance"') : button("返回详情页", "Back to details", "icecream", "primary", true),
+    body: `${stepper(4, 4, false, true)}${renderMachineGuideContent(cup)}`,
   });
 }
 
@@ -3288,7 +3293,11 @@ document.addEventListener("focusin", (event) => {
 document.addEventListener("input", (event) => {
   if (event.target.matches("#freeze-start")) {
     const saveAction = app.querySelector("[data-freeze-time-save]");
-    if (saveAction) saveAction.hidden = event.target.value === getCupRuntime().frozenAt;
+    if (saveAction) {
+      const changed = event.target.value !== getCupRuntime().frozenAt;
+      saveAction.hidden = !changed;
+      app.querySelector("[data-freeze-default-action]").hidden = changed;
+    }
   }
   if (event.target.matches("#batch-recipe-query")) updateBatchRecipeSuggestions(event.target);
   if (event.target.matches("#recipe-query")) {

@@ -1,4 +1,16 @@
 const STORAGE_KEY = "momcozy-im01-prototype";
+const MAKING_STEPS = ["make-recipe", "make-portion"];
+const MAKING_PAGE_TITLE = { titleZh: "制作冰淇淋", titleEn: "Make ice cream" };
+const DEFAULT_MAKING_PORTION = "500";
+const DEFAULT_CUSTOM_MAKING_PORTION = "2000";
+const MAKING_PORTIONS = ["250", "500", "1000", "1500"];
+function parseMakingPortion(value) {
+  const text = String(value ?? "").trim();
+  const ml = Number(text);
+  return /^[0-9]+$/.test(text) && Number.isSafeInteger(ml) && ml > 0 ? String(ml) : null;
+}
+
+const DEMO_FREEZE_SECONDS = 10;
 
 const groups = {
   app: ["APP 一级入口", "App entry"],
@@ -27,25 +39,22 @@ const routes = [
   route("icecream-mine", "device", "V1.0", "冰淇淋机个人空间", "Ice cream maker · My", "设备 → 冰淇淋机详情 → 我的", "Devices → Ice cream maker → My", "仅聚合 IM01 相关的杯子、制作历史、食谱资产与配件订单。", "Contains only cups, making history, recipe assets, and accessory orders related to IM01."),
   route("tasks", "device", "V1.0", "全部当前任务", "Current tasks", "冰淇淋机详情 → 当前制作任务", "Ice cream maker → Current tasks", "按下一步动作排列所有活动批次。", "Orders active batches by the next required action."),
   route("cups", "device", "V1.0", "我的杯子", "My cups", "冰淇淋机详情 → 杯子管理", "Ice cream maker → Cup management", "杯子的基础增删查改与制作历史入口。", "Basic cup management and access to cup history."),
-  route("cup-timer", "device", "V1.0", "手动计时", "Manual timer", "冰淇淋机详情 → 我的杯子 → 手动计时", "Ice cream maker → My cups → Manual timer", "为指定杯子单独计时，不改变制作批次状态。", "Times a selected cup independently without changing its making status."),
-  route("cup-detail", "device", "V1.0", "杯子详情", "Cup detail", "杯子管理 → CUP 1", "Cup management → CUP 1", "查看杯子基础资料与该杯制作历史。", "Shows basic cup details and making history for that cup."),
-  route("cup-edit", "device", "V1.0", "编辑杯子", "Edit cup", "杯子管理 → 编辑杯子资料", "Cup management → Edit cup details", "仅编辑杯子名称、识别颜色与使用备注。", "Edits only the cup name, identification color, and usage note."),
+  route("cup-detail", "device", "V1.0", "杯子详情", "Cup detail", "杯子管理 → 选中杯子", "Cup management → Selected cup", "查看杯子基础资料与该杯制作历史。", "Shows basic cup details and making history for that cup."),
+  route("cup-edit", "device", "V1.0", "编辑杯子", "Edit cup", "杯子管理 → 编辑杯子资料", "Cup management → Edit cup details", "仅编辑杯子名称与识别颜色。", "Edits only the cup name and identification color."),
 
   route("recipes", "recipe", "V1.0", "食谱中心", "Recipe center", "冰淇淋机详情 → 食谱中心", "Ice cream maker → Recipe center", "食谱、场景专题与分类入口。", "Recipes, collections, and categories."),
   route("recipe-results", "recipe", "V1.0", "食谱结果", "Recipe results", "食谱中心 → 分类/搜索结果", "Recipe center → Results", "按名称、食材、饮食偏好与机器程序查找食谱。", "Find recipes by name, ingredient, dietary preference, and machine program."),
   route("recipe-search", "recipe", "V1.0", "搜索食谱", "Search recipes", "食谱中心 → 搜索", "Recipe center → Search", "支持按食谱名称与食材搜索。", "Search by recipe name or ingredient."),
-  route("recipe-filter", "recipe", "V1.0", "食谱筛选", "Recipe filters", "食谱结果 → 筛选", "Recipe results → Filters", "设置饮食偏好与机器程序条件。", "Sets dietary preference and machine program filters."),
+  route("recipe-filter", "recipe", "V1.0", "食谱筛选", "Recipe filters", "食谱结果 → 筛选", "Recipe results → Filters", "筛选收藏、已制作、食谱标签和冰品种类。", "Filter by favorites, previously prepared recipes, tags, and dessert types."),
   route("recipe-detail", "recipe", "V1.0", "食谱详情", "Recipe detail", "食谱列表 → 食谱详情", "Recipe list → Recipe detail", "食材换算、适用性、步骤和本机程序指导。", "Ingredient scaling, suitability, steps, and on-device program guidance."),
   route("favorites", "recipe", "V1.0", "我的收藏", "Favorites", "我的 → 收藏", "Me → Favorites", "集中查看已收藏食谱。", "View saved recipes in one place."),
   route("recent", "recipe", "V1.0", "最近查看", "Recently viewed", "我的 → 最近查看", "Me → Recently viewed", "快速回到近期查看过的食谱。", "Quickly return to recently viewed recipes."),
 
   route("make-recipe", "making", "V1.0", "选择食谱", "Choose recipe", "制作流程 → 选择食谱", "Making flow → Choose recipe", "选择食谱并查看潜在过敏原提示。", "Choose a recipe and review its potential allergen notice."),
-  route("make-portion", "making", "V1.0", "确认份量与杯子", "Confirm portion & cup", "制作流程 → 确认份量与杯子", "Making flow → Confirm portion & cup", "选择份量后立即查看食材用量，再确认使用杯子。", "Choose a portion, review scaled ingredients, and confirm the cup."),
-  route("freeze-confirm", "making", "V1.0", "准备食材并冷冻", "Prepare & freeze ingredients", "制作流程 → 准备食材并冷冻", "Making flow → Prepare & freeze ingredients", "在一个页面内完成核心备料提示、入冻记录与倒计时。", "Combines essential prep guidance, freezer-time recording, and the countdown on one screen."),
-  route("freeze-countdown", "device", "V1.0", "批次状态", "Batch status", "制作任务 → 冷冻中或预计可制作", "Making task → Freezing or estimated ready", "作为活动任务状态页查看预计倒计时和下一步。", "Shows the countdown and next action as an active task status."),
-  route("machine-program", "making", "V1.0", "上机操作指引", "Machine operation guide", "冷冻完成 → 上机操作指引", "Freezing complete → Machine operation guide", "查看本机操作步骤后结束引导，不要求登记制作结果或余量。", "Shows on-machine steps without asking for a result or leftovers."),
+  route("make-portion", "making", "V1.0", "确认分量并备料", "Choose batch size & prepare", "制作流程 → 确认分量并备料", "Making flow → Choose batch size & prepare", "选分量、备料装杯，确认冷冻后立即计时。", "Choose a batch size, prepare and fill, then confirm to start the freezer timer."),
+  route("freeze-countdown", "device", "V1.0", "批次状态", "Batch status", "制作任务 → 冷冻中或预计可上机制作", "Making task → Freezing or estimated ready", "作为活动任务状态页查看预计倒计时和下一步。", "Shows the countdown and next action as an active task status."),
 
-  route("records", "record", "V1.0", "制作记录", "Making records", "冰淇淋机详情/我的 → 制作记录", "Ice cream maker/Me → Records", "按时间、食谱与杯子查看历史，兼容旧记录字段。", "History by time, recipe, and cup, with legacy record compatibility."),
+  route("records", "record", "V1.0", "制作记录", "Making records", "冰淇淋机详情/我的 → 制作记录", "Ice cream maker/Me → Records", "按时间或食谱查看冷冻到时的制作记录。", "Browse records of batches whose freezer timer ended, by time or recipe."),
   route("record-detail", "record", "V1.0", "制作记录详情", "Record detail", "制作记录 → 历史批次", "Records → Historical batch", "保留食谱版本和制作快照。", "Keeps the recipe version and batch snapshot."),
 
   route("support", "support", "V1.0", "设备助手", "Device assistant", "冰淇淋机详情 → 设备助手", "Ice cream maker → Device assistant", "常见使用问题、操作指引与人工客服。", "Common questions, operating guides, and support."),
@@ -71,6 +80,7 @@ const routes = [
 
 
   route("page-map", "delivery", "说明", "页面地图", "Page map", "交付范围与版本边界", "Delivery scope and version boundary", "全部页面与功能框架节点的对应关系。", "Mapping between every screen and the functional framework."),
+  route("prepared-recipes", "recipe", "V1.0", "我做过的", "Recipes I’ve made", "我的 → 我做过的", "Me → Recipes I’ve made", "查看已计入制作次数的食谱。", "View recipes from batches counted as made."),
 ];
 
 function route(id, group, version, zh, en, nodeZh, nodeEn, noteZh, noteEn) {
@@ -78,15 +88,15 @@ function route(id, group, version, zh, en, nodeZh, nodeEn, noteZh, noteEn) {
 }
 
 const CUP_COLOR_OPTIONS = [
-  { value: "#4c9872", zh: "森林绿", en: "Forest green" },
-  { value: "#d39a65", zh: "蜂蜜棕", en: "Honey brown" },
-  { value: "#9b83bd", zh: "雾紫", en: "Mist purple" },
-  { value: "#5d82ae", zh: "湖水蓝", en: "Lake blue" },
   { value: "#d95b63", zh: "珊瑚红", en: "Coral red" },
   { value: "#eb923f", zh: "暖橙", en: "Warm orange" },
   { value: "#dfbd42", zh: "柠檬黄", en: "Lemon yellow" },
+  { value: "#4c9872", zh: "森林绿", en: "Forest green" },
   { value: "#49a7ae", zh: "青蓝", en: "Teal" },
+  { value: "#5d82ae", zh: "湖水蓝", en: "Lake blue" },
+  { value: "#9b83bd", zh: "雾紫", en: "Mist purple" },
   { value: "#dc8eae", zh: "樱花粉", en: "Blossom pink" },
+  { value: "#d39a65", zh: "蜂蜜棕", en: "Honey brown" },
   { value: "#8c929d", zh: "岩石灰", en: "Stone gray" },
 ];
 
@@ -97,10 +107,10 @@ const CUP_DEFINITIONS = {
 };
 
 const CUP_STATUS_META = {
-  available: { zh: "空闲", en: "Available", tone: "success" },
+  available: { zh: "空闲", en: "Available", tone: "available" },
   preparing: { zh: "备料中", en: "Preparing", tone: "info" },
   freezing: { zh: "冷冻中", en: "Freezing", tone: "info" },
-  ready: { zh: "预计可制作", en: "Estimated ready", tone: "success" },
+  ready: { zh: "可上机制作", en: "Ready to process", tone: "success" },
   "awaiting-result": { zh: "可查看指引", en: "Guide available", tone: "info" },
   "awaiting-leftovers": { zh: "旧批次", en: "Previous batch", tone: "info" },
   leftovers: { zh: "旧批次", en: "Previous batch", tone: "info" },
@@ -169,12 +179,31 @@ function createCupRuntime(savedRuntime = {}) {
 }
 
 const initialRoute = window.location.hash.slice(1);
-if (initialRoute === "remaining") window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#cup-detail`);
+const initialUrl = new URL(window.location.href);
+const startNewBatchFromLink = initialRoute === "make-recipe" && initialUrl.searchParams.has("newBatch");
+if (startNewBatchFromLink) {
+  initialUrl.searchParams.delete("newBatch");
+  window.history.replaceState(null, "", initialUrl);
+}
+function resolveLegacyRoute(route) {
+  if (route === "cup-timer") return "icecream";
+  if (route === "remaining") return "cup-detail";
+  if (["machine-program", "freeze-confirm"].includes(route)) return "freeze-countdown";
+  return route;
+}
+
+if (resolveLegacyRoute(initialRoute) !== initialRoute) {
+  window.history.replaceState(null, "", `#${resolveLegacyRoute(initialRoute)}`);
+}
 const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
 if (saved.cupDefinitions && Object.keys(saved.cupDefinitions).length) {
   Object.keys(CUP_DEFINITIONS).forEach((id) => delete CUP_DEFINITIONS[id]);
   Object.assign(CUP_DEFINITIONS, saved.cupDefinitions);
 }
+// Preserve older reminders in local storage without turning them into making batches.
+const legacyCupTimers = saved.cupTimers && typeof saved.cupTimers === "object" && !Array.isArray(saved.cupTimers)
+  ? saved.cupTimers
+  : {};
 const state = {
   route: window.location.hash.slice(1) || "devices",
   lang: saved.lang === "en" ? "en" : "zh",
@@ -182,7 +211,15 @@ const state = {
   version: "all",
   search: "",
   batchRecipeIndex: Number.isInteger(saved.batchRecipeIndex) && BATCH_RECIPE_SUGGESTIONS[saved.batchRecipeIndex] ? saved.batchRecipeIndex : 0,
-  flowBatchId: typeof saved.flowBatchId === "string" ? saved.flowBatchId : "",
+  selectedBatchId: typeof saved.selectedBatchId === "string" ? saved.selectedBatchId : "",
+  batches: saved.batches || {},
+  makingPortion: parseMakingPortion(saved.makingPortion) ?? DEFAULT_MAKING_PORTION,
+  customMakingPortion: saved.customMakingPortion === true || !MAKING_PORTIONS.includes(parseMakingPortion(saved.makingPortion) ?? DEFAULT_MAKING_PORTION),
+  customPortionDraft: null,
+  makingCupIds: Array.isArray(saved.makingCupIds) ? saved.makingCupIds.filter((id) => CUP_DEFINITIONS[id]) : [],
+  recipeShelf: "all",
+  recipeType: "",
+  makingRecipeType: "",
   detailRecipeIndex: saved.batchRecipeIndex || 0,
   recipeQuery: "",
   recipeSearchDraft: "",
@@ -195,7 +232,10 @@ const state = {
   recipeSearchHistory: saved.recipeSearchHistory || [],
   records: saved.records || [],
   recordId: "",
-  recordStep: 1,
+  recordHistoryView: "time",
+  recordHistoryOrder: "newest",
+  recordRecipeOrder: "most",
+  expandedRecordRecipes: new Set(),
   deviceAdded: saved.deviceAdded ?? Boolean(saved.cupRuntime),
   customRemaining: saved.customRemaining || "",
   memberId: "mia",
@@ -206,8 +246,6 @@ const state = {
   ],
   portion: saved.portion || "250",
   cup: CUP_DEFINITIONS[saved.cup] ? saved.cup : Object.keys(CUP_DEFINITIONS)[0],
-  timerCup: CUP_DEFINITIONS[saved.timerCup] ? saved.timerCup : Object.keys(CUP_DEFINITIONS)[0],
-  cupTimers: saved.cupTimers && typeof saved.cupTimers === "object" && !Array.isArray(saved.cupTimers) ? saved.cupTimers : {},
   member: saved.member || "mia",
   selectedMemberIds: Array.isArray(saved.selectedMemberIds) ? saved.selectedMemberIds : [saved.member || "mia"],
   favorite: saved.favorite ?? true,
@@ -221,7 +259,7 @@ const state = {
   leftoverExpiry: saved.leftoverExpiry || expiryFromNow(48),
   errorCode: saved.errorCode || "E03",
   returnRoute: saved.returnRoute || "",
-  filters: new Set((saved.filters || []).filter((filter) => ["low-sugar", "high-protein", "vegan", "ice-cream", "sorbet", "lite"].includes(filter))),
+  filters: new Set((saved.filters || []).filter((filter) => ["low-sugar", "no-added-sugar", "high-protein", "fruit-only", "vegan", "dairy-free", "ice-cream", "sorbet", "lite"].includes(filter))),
   cupProfiles: saved.cupProfiles || {},
   cupRuntime: createCupRuntime(saved.cupRuntime),
 };
@@ -232,9 +270,7 @@ const pageSearch = document.querySelector("#page-search");
 const versionFilter = document.querySelector("#version-filter");
 const toast = document.querySelector("#toast");
 let toastTimer;
-let pendingBatchReplacement = null;
-let replacementTrigger = null;
-let timerCupToReveal = null;
+let activeConfirmation = null;
 state.selectedMemberIds = state.selectedMemberIds.includes("family")
   ? state.memberProfiles.map((member) => member.id)
   : [...new Set(state.selectedMemberIds)].filter((id) => state.memberProfiles.some((member) => member.id === id));
@@ -246,7 +282,7 @@ let navigationRestoring = false;
 try {
   const navigation = JSON.parse(sessionStorage.getItem(`${STORAGE_KEY}-navigation`) || "null");
   if (navigation?.current?.route === state.route && Array.isArray(navigation.trail)) {
-    navigationTrail = navigation.trail;
+    navigationTrail = navigation.trail.filter((entry) => entry.route !== "cup-timer");
     navigationCurrent = navigation.current;
   }
 } catch {}
@@ -275,16 +311,13 @@ function T(zh, en) {
   return state.lang === "zh" ? zh : en;
 }
 
-function formatExpiry(value) {
+function formatCompactTime(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return T("未设置", "Not set");
-  return new Intl.DateTimeFormat(state.lang === "zh" ? "zh-CN" : "en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date);
+  if (value == null || Number.isNaN(date.getTime())) return T("未记录时间", "Time not recorded");
+  const pad = (number) => String(number).padStart(2, "0");
+  const day = `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+  if (typeof value === "string" && !/\d{1,2}:\d{2}/.test(value)) return day;
+  return `${day} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function saveState() {
@@ -295,7 +328,11 @@ function saveState() {
       theme: state.theme,
       portion: state.portion,
       batchRecipeIndex: state.batchRecipeIndex,
-      flowBatchId: state.flowBatchId,
+      selectedBatchId: state.selectedBatchId,
+      batches: state.batches,
+      makingPortion: state.makingPortion,
+      customMakingPortion: state.customMakingPortion,
+      makingCupIds: state.makingCupIds,
       lastCompletedRecipeIndex: state.lastCompletedRecipeIndex,
       recipeSearchHistory: state.recipeSearchHistory,
       records: state.records,
@@ -304,8 +341,7 @@ function saveState() {
       memberProfiles: state.memberProfiles,
       cupDefinitions: CUP_DEFINITIONS,
       cup: state.cup,
-      timerCup: state.timerCup,
-      cupTimers: state.cupTimers,
+      cupTimers: legacyCupTimers,
       member: state.member,
       selectedMemberIds: state.selectedMemberIds,
       favorite: state.favorite,
@@ -335,25 +371,40 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function recordCupIds(record) {
+  if (Array.isArray(record.cupIds)) return record.cupIds;
+  return record.cupId ? [record.cupId] : [];
+}
+
+function recordsForCup(id) {
+  return state.records.filter((record) => recordCupIds(record).includes(id));
+}
+
+function cupDisplayName(id) {
+  return state.cupProfiles[id]?.name || CUP_DEFINITIONS[id]?.cupId;
+}
+
+function cupNameTaken(name, exceptId) {
+  const nameKey = (value) => value.normalize("NFKC").trim().toLowerCase();
+  const key = nameKey(name);
+  return Object.keys(CUP_DEFINITIONS).some((id) => id !== exceptId && nameKey(cupDisplayName(id)) === key);
+}
+
 function getCupProfile(id) {
   const definition = CUP_DEFINITIONS[id] || Object.values(CUP_DEFINITIONS)[0];
   const savedProfile = state.cupProfiles[id] || {};
   const runtime = getCupRuntime(id);
-  const status = CUP_STATUS_META[runtime.status] || CUP_STATUS_META.available;
   const color = savedProfile.color || definition.color;
   const colorOption = CUP_COLOR_OPTIONS.find((option) => option.value === color) || CUP_COLOR_OPTIONS[0];
   return {
     ...definition,
     ...savedProfile,
     color,
-    name: savedProfile.name || definition.cupId,
-    count: String(state.records.filter((record) => record.cupId === id).length),
+    name: cupDisplayName(id) || definition.cupId,
+    count: String(visibleMakingHistory(recordsForCup(id)).length),
     note: Object.hasOwn(savedProfile, "note") ? savedProfile.note : T(definition.noteZh, definition.noteEn),
     colorLabelZh: colorOption.zh,
     colorLabelEn: colorOption.en,
-    stateZh: status.zh,
-    stateEn: status.en,
-    tone: status.tone,
     runtime,
   };
 }
@@ -387,14 +438,28 @@ function refreshCupFreezeCountdowns() {
   const now = Date.now();
   let changed = false;
   const scrollTop = app.querySelector(".mobile-scroll")?.scrollTop;
+  for (const batch of Object.values(state.batches)) {
+    if (batch.freezeEndsAt <= now) {
+      archiveFrozenBatch(batch, batch.freezeEndsAt);
+      delete state.batches[batch.id];
+      changed = true;
+    }
+    app.querySelectorAll(`[data-batch-freeze-countdown="${batch.id}"]`).forEach((element) => {
+      element.textContent = formatCupFreezeRemaining(batch, now);
+    });
+  }
   for (const [id, runtime] of Object.entries(state.cupRuntime)) {
     if (runtime.status !== "freezing") continue;
     if (!Number.isFinite(runtime.freezeEndsAt)) {
       updateCupRuntime(id, { status: "freezing", freezeRemaining: runtime.freezeRemaining || "24:00" });
       changed = true;
     }
-    if (getCupRuntime(id).freezeEndsAt <= now) {
-      updateCupRuntime(id, { status: "ready", freezeRemaining: "" });
+    const freezeEndsAt = getCupRuntime(id).freezeEndsAt;
+    if (freezeEndsAt <= now) {
+      updateCupRuntime(id, { status: "ready", freezeRemaining: "", endedAt: new Date(freezeEndsAt).toISOString() });
+      if (runtime.batchId && runtime.frozenAt && !state.records.some((record) => record.id === runtime.batchId)) {
+        archiveFrozenBatch({ ...runtime, id: runtime.batchId, cupIds: [id], cupName: getCupProfile(id).name }, freezeEndsAt);
+      }
       changed = true;
     }
     app.querySelectorAll(`[data-cup-freeze-countdown="${id}"]`).forEach((element) => {
@@ -403,62 +468,16 @@ function refreshCupFreezeCountdowns() {
   }
   if (changed) {
     saveState();
-    render();
-    if (state.route === "freeze-confirm" && scrollTop !== undefined) app.querySelector(".mobile-scroll")?.scrollTo(0, scrollTop);
-  }
-}
-
-function getManualTimer(id) {
-  const timer = state.cupTimers[id];
-  return timer && Number.isFinite(timer.startedAt) && Number.isFinite(timer.endsAt) && Number.isFinite(timer.durationMinutes) ? timer : null;
-}
-
-function formatManualTimer(timer, now = Date.now()) {
-  const seconds = Math.max(0, Math.ceil((timer.endsAt - now) / 1000));
-  return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60]
-    .map((value) => String(value).padStart(2, "0")).join(":");
-}
-
-function refreshManualTimers() {
-  const now = Date.now();
-  let changed = false;
-  for (const [id, timer] of Object.entries(state.cupTimers)) {
-    if (!CUP_DEFINITIONS[id] || !getManualTimer(id)) continue;
-    if (!timer.completedAt && timer.endsAt <= now) {
-      timer.completedAt = now;
-      changed = true;
+    if (activeConfirmation) {
+      activeConfirmation.refreshPending = true;
+      return;
     }
-    app.querySelectorAll(`[data-manual-timer="${id}"]`).forEach((element) => {
-      element.textContent = timer.completedAt ? T("已结束", "Finished") : formatManualTimer(timer, now);
-    });
-  }
-  if (changed) {
-    saveState();
+    const prepWasOpen = app.querySelector(".freeze-guides [data-prep-guide]")?.open;
     render();
-    showToast("手动计时结束，请检查杯中食材", "Timer finished. Check the cup contents.");
+    const prepGuide = app.querySelector(".freeze-guides [data-prep-guide]");
+    if (prepWasOpen && prepGuide) prepGuide.open = true;
+    if (["freeze-countdown", "make-portion"].includes(state.route) && scrollTop !== undefined) app.querySelector(".mobile-scroll")?.scrollTo(0, scrollTop);
   }
-}
-
-function resetCupRuntime(id) {
-  updateCupRuntime(id, {
-    status: "available",
-    recipeZh: "",
-    recipeEn: "",
-    member: "",
-    memberSnapshots: [],
-    portion: "",
-    remaining: "",
-    leftoverExpiry: "",
-    completedAt: "",
-    freezeRemaining: "",
-    result: "",
-    batchId: "",
-    frozenAt: "",
-    endedAt: "",
-    servedAt: "",
-    ingredients: [],
-    program: "",
-  });
 }
 
 function cupStatus(id = state.cup) {
@@ -468,9 +487,9 @@ function cupStatus(id = state.cup) {
 function cupTarget(id = state.cup) {
   const status = getCupRuntime(id).status;
   if (status === "available") return "make-recipe";
-  if (status === "preparing") return "freeze-confirm";
-  if (status === "freezing") return "freeze-confirm";
-  if (status === "ready" || status === "awaiting-result") return "freeze-confirm";
+  if (status === "preparing") return "make-portion";
+  if (status === "freezing") return "freeze-countdown";
+  if (status === "ready" || status === "awaiting-result") return "freeze-countdown";
   if (status === "awaiting-leftovers" || status === "leftovers") return "cup-detail";
   return "cup-detail";
 }
@@ -480,8 +499,8 @@ function cupAction(id = state.cup) {
   const actions = {
     available: ["开始制作", "Start making"],
     preparing: ["继续备料", "Continue prep"],
-    freezing: ["查看任务", "View task"],
-    ready: ["查看上机指引", "View machine guide"],
+    freezing: ["查看进度", "View progress"],
+    ready: ["查看上机步骤", "View processing steps"],
     "awaiting-result": ["查看上机指引", "View machine guide"],
     "awaiting-leftovers": ["查看杯子", "View cup"],
     leftovers: ["查看杯子", "View cup"],
@@ -497,10 +516,6 @@ function selectedMembers() {
   return state.memberProfiles.filter((member) => state.selectedMemberIds.includes(member.id));
 }
 
-function showMakingTutorialByDefault() {
-  return state.records.filter((record) => ["complete", "guidance-viewed"].includes(record.result)).length < 3;
-}
-
 function saveRecipeSearch() {
   const query = state.recipeQuery.trim();
   if (query) state.recipeSearchHistory = [query, ...state.recipeSearchHistory.filter((item) => item !== query)].slice(0, 8);
@@ -509,12 +524,34 @@ function saveRecipeSearch() {
 
 function recordBatch(cupId) {
   const runtime = getCupRuntime(cupId);
+  if (runtime.managedBatch) {
+    const batch = state.batches[runtime.batchId];
+    if (!batch) return;
+    const cupIds = batch.cupIds.filter((id) => id !== cupId);
+    if (cupIds.length) {
+      batch.cupIds = cupIds;
+      batch.cupName = cupIds.map((id) => getCupProfile(id).name).join(", ");
+    } else {
+      state.records.unshift({ ...batch, status: "archived", result: "", endedAt: new Date().toISOString() });
+      delete state.batches[batch.id];
+    }
+    return;
+  }
   const id = runtime.batchId || `${cupId}-${runtime.completedAt || Date.now()}`;
-  if (!runtime.batchId) updateCupRuntime(cupId, {batchId: id});
   const existing = state.records.find((record) => record.id === id);
+  if (existing && isCompletedBatchRecord(existing)) return;
+  if (!runtime.batchId) updateCupRuntime(cupId, {batchId: id});
   const recordedAt = existing?.recordedAt || formatDateTimeInput(new Date());
   const snapshot = JSON.parse(JSON.stringify({...getCupRuntime(cupId), recordedAt, id, cupId, cupName: existing?.cupName || getCupProfile(cupId).name}));
   state.records = [snapshot, ...state.records.filter((record) => record.id !== id)];
+}
+
+function archiveFrozenBatch(batch, endTime) {
+  const endedAt = new Date(endTime).toISOString();
+  const record = { ...batch, status: "ready", result: "freeze-ready", endedAt };
+  state.records = [record, ...state.records.filter((item) => item.id !== batch.id)]
+    .sort((first, second) => recordMakingTime(second) - recordMakingTime(first));
+  state.lastCompletedRecipeIndex = batch.recipeIndex;
 }
 
 function renderAddDevice() {
@@ -531,14 +568,35 @@ function renderAddDevice() {
 
 function renderAddIcecream() {
   return mobilePage({
-    titleZh: "添加设备", titleEn: "Add device", back: "add-device",
+    titleZh: "添加设备", titleEn: "Add device", back: "add-device", pageClass: "im01-add-page",
     body: `${pageIntro("选择你的设备", "Choose your device", "冰淇淋机 IM01", "Ice cream maker IM01", "添加后即可查食谱、记录制作和管理杯子。", "Add it to find recipes, log batches, and manage cups.")}
       <div class="device-visual-card">${machineArt()}</div>
-      <div class="section-block">${sectionHeading("添加后，你可以", "What you can do")}<div class="card card-pad">
-        ${listRow("找到喜欢的食谱", "Discover recipes", "查看食材、热量与过敏原，按制作份量换算用量。", "Review ingredients, calories, and allergens; scale quantities to your portion.", "", "")}
-        ${listRow("跟着步骤轻松制作", "Follow the making steps", "从备料、冷冻到上机操作，随时查看指引。", "Follow prep, freezing, and on-machine guidance whenever needed.", "", "")}
-        ${listRow("管理每一杯冰淇淋", "Manage every cup", "查看杯子当前任务和已有制作记录。", "View each cup's current task and saved history.", "", "")}
-      </div></div>
+      <section class="section-block im01-feature-intro">
+        ${sectionHeading("添加后，开启你的冰淇淋日常", "Your ice cream, your way")}
+        <div class="im01-feature-list">
+          <article class="card im01-feature-card">
+            <div class="im01-feature-art im01-recipe-collage" aria-hidden="true">
+              <img src="./assets/recipes/strawberry-yogurt-ice-cream.jpg" alt="" />
+              <img src="./assets/recipes/mango-coconut-sorbet.jpg" alt="" />
+            </div>
+            <div class="im01-feature-copy"><h3>${T("今天，想吃哪一款？", "What’s your flavor today?")}</h3><p>${T("发现喜欢的食谱，食材用量随份量自动换算。", "Find a recipe you love, with ingredients scaled to your batch.")}</p></div>
+          </article>
+          <article class="card im01-feature-card">
+            <div class="im01-feature-art im01-step-art" aria-hidden="true">
+              <img src="./assets/recipes/blueberry-greek-yogurt-ice-cream.jpg" alt="" />
+              <span><b>1</b><i></i><b>2</b><i></i><b>3</b></span>
+            </div>
+            <div class="im01-feature-copy"><h3>${T("一步步，做出好滋味", "A little guidance, a lovely treat")}</h3><p>${T("备料、冷冻、上机操作，每一步都有指引。", "Follow the guide from prep and freezing to using your machine.")}</p></div>
+          </article>
+          <article class="card im01-feature-card">
+            <div class="im01-feature-art im01-cup-art" aria-hidden="true">
+              <span class="im01-mini-cup"></span><span class="im01-mini-cup"></span><span class="im01-mini-cup"></span>
+              <span class="im01-mini-history"><i></i><i></i><i></i></span>
+            </div>
+            <div class="im01-feature-copy"><h3>${T("每一杯，都有迹可循", "A story behind every cup")}</h3><p>${T("查看杯子当前任务，留住每一次制作记录。", "Keep track of each cup and revisit the batches you’ve made.")}</p></div>
+          </article>
+        </div>
+      </section>
       <div class="alert info section-block"><strong>${T("无需配网或蓝牙连接", "No Wi-Fi or Bluetooth pairing")}</strong>${T("添加后即可使用食谱与记录功能，机器操作请在机身面板完成。", "Use recipes and logs after adding. Operate the machine using its control panel.")}</div>
       <div class="sticky-actions">${state.deviceAdded ? button("添加完成", "Added", "devices", "primary", true) : button("添加到我的设备", "Add to my devices", "", "primary", true, 'data-action="add-device"')}</div>`,
   });
@@ -559,7 +617,7 @@ function cupRecipeLabel(runtime) {
 function cupStatusDetail(id) {
   const runtime = getCupRuntime(id);
   if (runtime.status === "freezing") return { zh: `冷冻中 · 还需 ${runtime.freezeRemaining || "06:24"}`, en: `Freezing · ${runtime.freezeRemaining || "06:24"} left` };
-  if (runtime.status === "ready") return { zh: "已满足至少 24 小时", en: "At least 24h completed" };
+  if (runtime.status === "ready") return { zh: "倒计时已结束 · 请确认食材冻实", en: "Countdown ended · Check that the mixture is fully frozen" };
   if (runtime.status === "awaiting-result") return { zh: "可查看上机指引", en: "Machine guide available" };
   if (["awaiting-leftovers", "leftovers"].includes(runtime.status)) return { zh: "旧批次记录已保留", en: "Previous batch retained" };
   if (runtime.status === "preparing") return { zh: "批次已创建 · 等待记录入冻", en: "Batch created · Freezer time pending" };
@@ -576,13 +634,9 @@ function cupCardFromRuntime(id) {
     id,
     title: cup.name,
     color: cup.color,
-    stateZh: cup.stateZh,
-    stateEn: cup.stateEn,
     detailZh: recipe.zh,
     detailEn: recipe.en,
     countdown,
-    countdownLabelZh: "冷冻倒计时",
-    countdownLabelEn: "Freeze countdown",
     target: cupTarget(id),
     actionZh: action[0],
     actionEn: action[1],
@@ -608,6 +662,11 @@ function statusPill(zh, en, tone = "success") {
   return `<span class="status-pill ${tone}">${T(zh, en)}</span>`;
 }
 
+function cupStatusPill(id) {
+  const { zh, en, tone } = cupStatus(id);
+  return `<span class="status-pill cup-status-pill ${tone}">${T(zh, en)}</span>`;
+}
+
 function contextualBack(fallback) {
   return navigationTrail.at(-1)?.route || fallback;
 }
@@ -625,13 +684,13 @@ function deviceCurrentBatchPreview({ focused = false } = {}) {
       <div class="figma-device-preview-copy">
         <div class="current-batch-summary">
           <div><span>${T("杯子使用", "Cups in use")}</span><strong>${activeCups.length} / ${cups.length}</strong></div>
-          <div><span>${T("空闲杯子", "Available cup")}</span><strong>${availableCups.map(({ profile }) => profile.cupId).join("、") || T("暂无", "None")}</strong></div>
+          <div><span>${T("空闲杯子", "Available cup")}</span><strong>${availableCups.map(({ profile }) => escapeHtml(profile.name)).join(T("、", ", ")) || T("暂无", "None")}</strong></div>
         </div>
         <div class="current-batch-list">
           ${activeCups.map(({ id, profile, runtime }) => {
             const detail = cupStatusDetail(id);
             return `<button type="button" class="current-batch-row ${["awaiting-result", "awaiting-leftovers", "cleaning"].includes(runtime.status) ? "is-pending" : ""}" data-route-card="${cupTarget(id)}" data-cup="${id}">
-              <span class="current-batch-cup">${profile.cupId}</span>
+              <span class="current-batch-cup">${escapeHtml(profile.name)}</span>
               <span class="current-batch-copy"><strong>${T(runtime.recipeZh, runtime.recipeEn)}</strong><small>${T(detail.zh, detail.en)}</small></span>
               <span class="current-batch-chevron">›</span>
             </button>`;
@@ -653,7 +712,7 @@ function deviceCurrentBatchPreview({ focused = false } = {}) {
           const status = CUP_STATUS_META[runtime.status] || CUP_STATUS_META.available;
           const available = runtime.status === "available";
           return `<div class="device-cup-overview-row is-${status.tone}">
-            <span class="device-cup-overview-id"><i></i>${profile.cupId}</span>
+            <span class="device-cup-overview-id"><i></i><span>${escapeHtml(profile.name)}</span></span>
             <strong>${available ? T(status.zh, status.en) : escapeHtml(T(runtime.recipeZh, runtime.recipeEn))}</strong>
             ${available ? "" : `<small>${runtime.status === "freezing" ? `${T("冷冻中（倒计时：", "Freezing (Time left: ")}<span data-cup-freeze-countdown="${id}">${formatCupFreezeRemaining(runtime)}</span>${T("）", ")")}` : T(status.zh, status.en)}</small>`}
           </div>`;
@@ -718,33 +777,29 @@ function taskCard({ titleZh, titleEn, descZh, descEn, statusZh, statusEn, tone, 
   return `<article class="card task-card" data-route-card="${target}" data-cup="${cupId}" tabindex="0">
     <div class="task-top"><div><h3>${T(titleZh, titleEn)}</h3><p>${T(descZh, descEn)}</p></div>${statusPill(statusZh, statusEn, tone)}</div>
     <div class="task-meta">
-      <div class="meta-item"><span>${T("杯子", "Cup")}</span><strong>${cup}</strong></div>
+      <div class="meta-item"><span>${T("杯子", "Cup")}</span><strong>${escapeHtml(cup)}</strong></div>
       <div class="meta-item"><span>${T("下一时间点", "Next time")}</span><strong>${T(timeZh, timeEn)}</strong></div>
     </div>
     ${sourceNote(source)}
   </article>`;
 }
 
-function cupCard({ id, title, color, stateZh, stateEn, detailZh, detailEn, countdown = "", countdownLabelZh = "预计剩余", countdownLabelEn = "Est. remaining", countdownSubtle = false, target = "cup-detail", actionZh = "", actionEn = "" }) {
-  const cupStatus = getCupRuntime(id).status;
-  const freezing = cupStatus === "freezing";
-  const manualTimer = getManualTimer(id);
-  const timerFinished = manualTimer && (manualTimer.completedAt || manualTimer.endsAt <= Date.now());
-  return `<article class="card cup-card" style="--cup-color:${color}" data-route-card="${manualTimer ? "cup-timer" : target}" data-cup="${id}" ${manualTimer ? `data-timer-cup="${id}"` : ""} tabindex="0">
-    <div class="cup-card-header"><div class="cup-dot"></div><h3>${escapeHtml(title)}</h3>${!manualTimer && cupStatus !== "available" ? `<p class="cup-recipe-name">${escapeHtml(T(detailZh, detailEn))}</p>` : ""}</div>
-    <div class="cup-status-row"><p class="cup-state">${manualTimer ? T(timerFinished ? "计时结束" : "计时中", timerFinished ? "Timer finished" : "Timer running") : T(stateZh, stateEn)}</p>${!manualTimer && freezing && countdown ? `<span class="cup-time">${T("倒计时：", "Time left: ")}<strong class="cup-time" aria-label="${T(countdownLabelZh, countdownLabelEn)}" data-cup-freeze-countdown="${id}">${countdown}</strong></span>` : ""}</div>
-    ${!manualTimer && countdown && !freezing ? `<div class="cup-countdown ${countdownSubtle ? "is-subtle" : ""}"><span>${T(countdownLabelZh, countdownLabelEn)}</span><strong>${countdown}</strong></div>` : ""}
-    ${manualTimer ? `<div class="cup-countdown cup-manual-countdown"><span>${T("手动计时 · 剩余", "Manual timer · remaining")}</span><strong data-manual-timer="${id}">${timerFinished ? T("已结束", "Finished") : formatManualTimer(manualTimer)}</strong></div>` : ""}
-    ${manualTimer || actionZh ? `<div class="cup-card-action">${manualTimer ? T("查看计时", "View timer") : T(actionZh, actionEn)} <span>›</span></div>` : ""}
+function cupCard({ id, title, color, detailZh, detailEn, countdown = "", target = "cup-detail", actionZh = "", actionEn = "" }) {
+  const status = getCupRuntime(id).status;
+  return `<article class="card cup-card" style="--cup-color:${color}" data-route-card="${target}" data-cup="${id}" tabindex="0">
+    <div class="cup-card-header"><div class="cup-dot"></div><h3>${escapeHtml(title)}</h3>${status !== "available" ? `<p class="cup-recipe-name">${escapeHtml(T(detailZh, detailEn))}</p>` : ""}</div>
+    <div class="cup-status-row">${cupStatusPill(id)}</div>
+    ${status === "freezing" && countdown ? `<div class="cup-countdown"><span>${T("冷冻倒计时", "Freeze countdown")}</span><strong data-cup-freeze-countdown="${id}">${countdown}</strong></div>` : ""}
+    ${actionZh ? `<div class="cup-card-action">${T(actionZh, actionEn)} <span>›</span></div>` : ""}
   </article>`;
 }
 
-function manageCupRow({ id, title, color, labelZh, labelEn, stateZh, stateEn, tone, historyZh, historyEn }) {
+function manageCupRow({ id, title, color, labelZh, labelEn, historyZh, historyEn }) {
   return `<article class="card manage-cup-row" style="--cup-color:${color}">
     <button type="button" class="manage-cup-main" data-route-card="cup-detail" data-cup="${id}">
       <span class="manage-cup-swatch"></span>
       <span class="manage-cup-copy"><strong>${escapeHtml(title)}</strong><small>${T(labelZh, labelEn)} · ${T(historyZh, historyEn)}</small></span>
-      ${statusPill(stateZh, stateEn, tone)}
+      ${cupStatusPill(id)}
       <span class="chevron">›</span>
     </button>
     <div class="manage-cup-actions">
@@ -783,7 +838,7 @@ function recipeCard({ flavor = "berry", titleZh, titleEn, metaZh, metaEn, target
   const [tagZh, tagEn] = recipePrimaryTag(recipe);
   return `<article class="card recipe-card" data-route-card="${target}" data-recipe-index="${index}" tabindex="0">
     ${photo ? `<img class="recipe-card-image" src="${photo}" alt="${escapeHtml(T(titleZh, titleEn))}" />` : `<div class="recipe-art ${flavor}" role="img" aria-label="${escapeHtml(T(titleZh, titleEn))}"></div>`}
-    <div class="recipe-card-copy"><h3>${T(titleZh, titleEn)}</h3><p>${T(metaZh, metaEn)}</p><div class="recipe-meta"><span class="mini-badge">${T(tagZh, tagEn)}</span></div><p>${T(`约 ${getRecipeCalories(100, index)} kcal / 100 mL`, `Approx. ${getRecipeCalories(100, index)} kcal / 100 mL`)}</p></div>
+    <div class="recipe-card-copy"><h3>${T(titleZh, titleEn)}</h3><p>${T(metaZh, metaEn)}</p><div class="recipe-meta"><span class="mini-badge">${T(tagZh, tagEn)}</span></div></div>
   </article>`;
 }
 
@@ -791,18 +846,22 @@ function listRow(titleZh, titleEn, descZh, descEn, target = "", trailing = "›"
   return `<div class="list-row${leading ? " has-thumbnail" : ""}" ${target ? `data-route-card="${target}" tabindex="0"` : ""} ${attrs}>${leading}<div class="list-row-copy"><h3>${escapeHtml(T(titleZh, titleEn))}</h3>${descZh ? `<p>${escapeHtml(T(descZh, descEn))}</p>` : ""}</div><span class="chevron">${trailing}</span></div>`;
 }
 
-function stepper(current, total = 4, historyNavigation = false, flowNavigation = false) {
-  return `<div class="stepper" aria-label="${T("制作步骤", "Making steps")}">${Array.from({ length: total }, (_, index) => {
+function stepper(current, total = 4, flowNavigation = false) {
+  const stepNames = total === 2
+    ? [["选食谱", "Choose recipe"], ["分量与备料", "Portion & prep"]]
+    : null;
+  return `<div class="stepper${stepNames ? " stepper--labeled" : ""}" aria-label="${T("制作步骤", "Making steps")}">${Array.from({ length: total }, (_, index) => {
     const number = index + 1;
     const classes = `stepper-item ${number < current ? "is-complete" : number === current ? "is-active" : ""}`;
-    const accessible = `aria-label="${T(`查看第 ${number} 步`, `View step ${number}`)}" ${number === current ? 'aria-current="step"' : ""}`;
-    const canNavigate = flowNavigation && (number <= current || number === current + 1 && (current < 3 || ["ready", "awaiting-result"].includes(getCupRuntime().status)));
-    const item = historyNavigation
-      ? `<button type="button" class="${classes}" data-action="record-step" data-value="${number}" ${accessible}>${number}</button>`
-      : flowNavigation
-        ? `<button type="button" class="${classes}" data-value="${number}" ${canNavigate ? 'data-action="flow-step"' : `disabled title="${T(number === 4 ? "冷冻完成后可查看上机操作" : "请先完成前一步", number === 4 ? "Available when freezing is complete" : "Complete the previous step first")}"`} ${accessible}>${number}</button>`
-        : `<span class="${classes}">${number}</span>`;
-    return `${index ? `<span class="stepper-line ${number <= current ? "is-complete" : ""}"></span>` : ""}${item}`;
+    const name = stepNames ? T(...stepNames[index]) : "";
+    const label = name ? `<span class="stepper-number" aria-hidden="true">${number}</span><span>${name}</span>` : number;
+    const stepTitle = name ? T(`第 ${number} 步，${name}`, `Step ${number}, ${name}`) : T(`查看第 ${number} 步`, `View step ${number}`);
+    const accessible = `aria-label="${stepTitle}" ${number === current ? 'aria-current="step"' : ""}`;
+    const canNavigate = flowNavigation && (number <= current + 1);
+    const item = flowNavigation
+      ? `<button type="button" class="${classes}" data-value="${number}" ${canNavigate ? 'data-action="flow-step"' : `disabled title="${T("请先完成前一步", "Complete the previous step first")}"`} ${accessible}>${label}</button>`
+      : `<span class="${classes}" ${number === current ? 'aria-current="step"' : ""}>${label}</span>`;
+    return `${index ? `<span class="stepper-line ${number <= current ? "is-complete" : ""}" aria-hidden="true"></span>` : ""}${item}`;
   }).join("")}</div>`;
 }
 
@@ -999,48 +1058,88 @@ function renderMine() {
   });
 }
 
-function recordMakingTime(record) {
-  const value = [record.completedAt, record.endedAt, record.recordedAt, record.createdAt, record.frozenAt]
+function recordTimeValue(record) {
+  return [record.completedAt, record.endedAt, record.recordedAt, record.createdAt, record.frozenAt]
     .find((item) => item && Number.isFinite(new Date(item).getTime()));
-  // Legacy demo records without any timestamp use a stable sample date.
-  return new Date(value || "2026-10-23T20:22");
 }
 
-function recordMakingMeta(record) {
-  const date = recordMakingTime(record);
-  const pad = (value) => String(value).padStart(2, "0");
-  const time = `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
-  const cup = record.cupId.toUpperCase().replace("-", " ");
-  const label = record.result === "guidance-viewed" ? ["查看指引：", "Guide viewed: "] : record.result ? ["制作时间：", "Made: "] : ["留档时间：", "Saved: "];
-  return `${cup} · ${T(...label)}${time}`;
+function recordMakingTime(record) {
+  const time = isCompletedBatchRecord(record) ? record.endedAt : recordTimeValue(record);
+  return new Date(time ?? 0).getTime();
+}
+
+function recordDisplayTime(value) {
+  const date = new Date(value);
+  if (value == null || Number.isNaN(date.getTime())) return T("未记录时间", "Time not recorded");
+  const pad = (number) => String(number).padStart(2, "0");
+  const day = `${date.getFullYear()}/${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+  if (!/\d{1,2}:\d{2}/.test(value)) return day;
+  const clock = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${day} ${clock}${/\d{1,2}:\d{2}:\d{2}/.test(value) ? `:${pad(date.getSeconds())}` : ""}`;
+}
+
+function recordCupName(record) {
+  return record.cupName || record.cupId?.toUpperCase().replace("-", " ") || T("未关联杯子", "No cups linked");
+}
+
+function recordTimeLine(value, labelZh, labelEn) {
+  return `<span>${T(`${labelZh}：`, `${labelEn}:`)}</span>${T("", " ")}<time title="${escapeHtml(recordDisplayTime(value))}">${escapeHtml(formatCompactTime(value))}</time>`;
 }
 
 function recordThumbnail(record) {
-  const recipe = getRecipe(record.recipeIndex ?? BATCH_RECIPE_SUGGESTIONS.findIndex((item) => item.zh === record.recipeZh));
-  const photo = recipePhoto(recipe);
+  const index = recordedRecipeIndex(record);
+  const recipe = index >= 0 ? getRecipe(index) : null;
+  const photo = recipe ? recipePhoto(recipe) : "";
   return photo
     ? `<img class="history-thumbnail" src="${photo}" alt="${escapeHtml(T(record.recipeZh, record.recipeEn))}" />`
-    : `<div class="history-thumbnail recipe-art ${recipe.flavor}" role="img" aria-label="${escapeHtml(T(record.recipeZh, record.recipeEn))}"></div>`;
+    : `<div class="history-thumbnail recipe-art ${recipe?.flavor || ""}" aria-hidden="true"></div>`;
 }
 
-function recordResultStatus(record) {
-  if (record.result === "guidance-viewed") return ["已查看操作指引", "Guide viewed", "info"];
-  if (record.result === "cancelled") return ["已取消", "Cancelled", "warning"];
-  if (record.result === "incomplete") return ["未完成", "Not completed", "warning"];
-  if (record.result === "complete") return record.servedAt ? ["已食用完", "Finished", "success"] : ["制作完成", "Made", "success"];
-  return ["已保留批次", "Batch saved", "info"];
+function recordedRecipeIndex(record) {
+  const index = record.recipeIndex;
+  if (index != null && index !== "" && BATCH_RECIPE_SUGGESTIONS[index]) return Number(index);
+  return BATCH_RECIPE_SUGGESTIONS.findIndex((recipe) => recipe.zh === record.recipeZh || recipe.en === record.recipeEn);
 }
 
-function recordListCard(record) {
+function recordRecipeKey(record) {
+  const index = recordedRecipeIndex(record);
+  return index >= 0 ? index : `legacy:${record.recipeZh || record.recipeEn || ""}`;
+}
+
+function isCompletedBatchRecord(record) {
+  return record.result === "freeze-ready";
+}
+
+function visibleMakingHistory(records = state.records) {
+  return records.filter(isCompletedBatchRecord);
+}
+
+function preparedRecipeCounts(records = visibleMakingHistory()) {
+  const counts = new Map();
+  for (const record of records) {
+    const key = recordRecipeKey(record);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return counts;
+}
+
+function preparedRecipeIndexes(records) {
+  return [...preparedRecipeCounts(records).keys()].filter(Number.isInteger).sort((a, b) => a - b);
+}
+
+function recordListCard(record, counts) {
+  const count = counts.get(recordRecipeKey(record)) || 0;
   return `<article class="card card-pad record-list-card" data-route-card="record-detail" data-record-id="${record.id}" tabindex="0">
     <div class="list-row has-thumbnail">${recordThumbnail(record)}
-      <div class="list-row-copy"><h3>${escapeHtml(T(record.recipeZh, record.recipeEn))}</h3><p>${escapeHtml(recordMakingMeta(record))}</p><div class="record-list-result">${statusPill(...recordResultStatus(record))}</div></div>
+      <div class="list-row-copy"><h3>${escapeHtml(T(record.recipeZh, record.recipeEn))}</h3><p class="record-cup-line">${escapeHtml(recordCupName(record))}</p><p class="record-time-line">${recordTimeLine(record.endedAt, "冷冻结束", "Freeze ended")}</p><div class="record-list-result"><span class="mini-badge">${T(`已制作 ${count} 次`, `Made ${count} times`)}</span></div></div>
       <span class="chevron">›</span>
     </div>
   </article>`;
 }
 
 function renderIcecream() {
+  const counts = preparedRecipeCounts();
+  const history = visibleMakingHistory().slice(0, 2);
   return mobilePage({
     pageClass: "icecream-overview",
     titleZh: "冰淇淋机",
@@ -1052,6 +1151,7 @@ function renderIcecream() {
       </div>`,
     body: `
       ${deviceVisualHero()}
+      ${Object.keys(state.batches).length ? `<section class="section-block">${sectionHeading("冷冻中", "Freezing")}<div class="card card-pad stack compact">${freezingBatchRows()}</div></section>` : ""}
       <div class="section-block">${sectionHeading("推荐食谱", "Recommended recipes", "全部食谱", "All recipes", "recipes")}
         <div class="recipe-grid">
           ${recipeCard({ flavor: "berry", titleZh: "草莓酸奶冰淇淋", titleEn: "Strawberry yogurt ice cream", metaZh: "新手首做 · 至少预冻 24 小时", metaEn: "First try · Freeze at least 24h" })}
@@ -1060,16 +1160,13 @@ function renderIcecream() {
       </div>
       <div class="section-block">${sectionHeading("制作历史", "Making history", "查看更多", "View more", "records")}
         <div class="card card-pad stack compact">
-          ${state.records.length ? state.records.slice(0, 2).map((record) => listRow(record.recipeZh, record.recipeEn, recordMakingMeta(record), recordMakingMeta(record), "record-detail", "›", `data-record-id="${record.id}"`, recordThumbnail(record))).join("") : `<p class="result-summary">${T("结束上机引导后，可在这里回看食谱与杯子信息。", "After finishing the machine guide, revisit the recipe and cup here.")}</p>`}
+          ${history.length ? history.map((record) => recordListCard(record, counts)).join("") : `<p class="result-summary">${T("冷冻到时后，可在这里回看批次记录。", "After the countdown ends, revisit the batch record here.")}</p>`}
         </div>
       </div>
       <div class="section-block">
         <div class="section-heading">
           <h3>${T("我的杯子", "My cups")}</h3>
-          <div class="section-heading-actions">
-            <button type="button" data-route="cup-timer">${T("手动计时", "Timer")}</button>
-            <button type="button" data-route="cups">${T("管理", "Manage")}</button>
-          </div>
+          <button type="button" data-route="cups">${T("管理", "Manage")}</button>
         </div>
         <div class="cup-carousel">
           <div class="cup-grid" id="overview-cups">
@@ -1083,26 +1180,27 @@ function renderIcecream() {
 }
 
 function renderIcecreamMine() {
+  const history = visibleMakingHistory();
+  const madeCount = preparedRecipeIndexes(history).length;
   const activeCount = Object.keys(CUP_DEFINITIONS).filter((id) => getCupRuntime(id).status !== "available").length;
   return mobilePage({
     titleZh: "我的",
     titleEn: "My",
-    captionZh: "冰淇淋机 · IM01",
-    captionEn: "Ice cream maker · IM01",
     back: "icecream",
     body: `
       <div class="card card-pad" style="display:flex;align-items:center;gap:12px">
-        <span class="notice-token">IM</span><div><h2 style="margin:0;font-size:17px">${T("我的冰淇淋机", "My ice cream maker")}</h2><p style="margin:4px 0 0;color:var(--muted-foreground);font-size:12px">${T(`${Object.keys(CUP_DEFINITIONS).length} 个实体杯 · ${state.records.length} 条制作记录`, `${Object.keys(CUP_DEFINITIONS).length} cups · ${state.records.length} making records`)}</p></div>
+        <span class="notice-token">IM</span><div><h2 style="margin:0;font-size:var(--type-title-l-medium-font-size);line-height:var(--type-title-l-medium-line-height)">${T("我的冰淇淋机", "My ice cream maker")}</h2><p style="margin:4px 0 0;color:var(--muted-foreground);font-size:12px">${T(`${Object.keys(CUP_DEFINITIONS).length} 个实体杯 · ${history.length} 条制作记录`, `${Object.keys(CUP_DEFINITIONS).length} cups · ${history.length} making records`)}</p></div>
       </div>
       <div class="section-block">${sectionHeading("杯子与制作", "Cups & making")}
         <div class="card card-pad stack compact">
           ${listRow("我的杯子", "My cups", `${Object.keys(CUP_DEFINITIONS).length} 个实体杯 · ${activeCount} 个使用中`, `${Object.keys(CUP_DEFINITIONS).length} cups · ${activeCount} in use`, "cups")}
-          ${listRow("制作记录", "Making records", `${state.records.length} 条记录`, `${state.records.length} records`, "records")}
+          ${listRow("制作记录", "Making records", `${history.length} 条记录`, `${history.length} records`, "records")}
         </div>
       </div>
       <div class="section-block">${sectionHeading("我的食谱", "My recipes")}
         <div class="card card-pad stack compact">
           ${listRow("我的收藏", "Favorites", `${state.favoriteRecipes.length} 个食谱`, `${state.favoriteRecipes.length} recipes`, "favorites")}
+          ${listRow("我做过的", "Recipes I’ve made", `${madeCount} 个食谱`, `${madeCount} recipes`, "prepared-recipes")}
           ${listRow("最近查看", "Recently viewed", `${state.recentRecipes.length} 个食谱`, `${state.recentRecipes.length} recipes`, "recent")}
         </div>
       </div>
@@ -1115,8 +1213,23 @@ function renderIcecreamMine() {
   });
 }
 
+function freezingBatchRows() {
+  return Object.values(state.batches).map((batch) => {
+    const countdown = `<span data-batch-freeze-countdown="${batch.id}">${formatCupFreezeRemaining(batch)}</span>`;
+    const detail = `${escapeHtml(batch.cupName || T("未关联杯子", "No cups linked"))} · ${batch.portion} mL`;
+    return `<button class="current-batch-row" type="button" data-route="freeze-countdown" data-batch-id="${batch.id}">
+      <span class="current-batch-copy"><strong>${escapeHtml(T(batch.recipeZh, batch.recipeEn))}</strong><small>${detail}</small></span>
+      <span>${countdown}</span><span class="current-batch-chevron">›</span>
+    </button>`;
+  }).join("");
+}
+
 function renderTasks() {
-  const activeCups = Object.keys(CUP_DEFINITIONS).filter((id) => getCupRuntime(id).status !== "available");
+  const activeCups = Object.keys(CUP_DEFINITIONS).filter((id) => {
+    const runtime = getCupRuntime(id);
+    return runtime.status !== "available" && !runtime.managedBatch;
+  });
+  const batchCount = activeCups.length + Object.keys(state.batches).length;
   const urgency = {ready: 0, "awaiting-result": 1, preparing: 2, freezing: 3, "awaiting-leftovers": 4, leftovers: 5};
   activeCups.sort((first, second) => urgency[getCupRuntime(first).status] - urgency[getCupRuntime(second).status]);
   const taskItems = activeCups.map((id) => {
@@ -1136,7 +1249,7 @@ function renderTasks() {
       tone: status.tone,
       timeZh: nextTime[0],
       timeEn: nextTime[1],
-      cup: cup.cupId,
+      cup: cup.name,
       cupId: id,
       target: cupTarget(id),
       source: ["freezing", "ready"].includes(runtime.status) ? "estimated" : "recorded",
@@ -1148,8 +1261,8 @@ function renderTasks() {
     back: "icecream",
     right: `<button class="icon-button textual" type="button" data-route="make-recipe">${T("新建", "New")}</button>`,
     body: `
-      ${pageIntro("按下一步排序", "Ordered by next action", `${activeCups.length} 个活动批次`, `${activeCups.length} active batches`, "时间来自你的记录，不代表机器实时状态。", "Timing comes from your records, not live device status.")}
-      <div class="stack">${taskItems || `<div class="empty-state card"><h3>${T("暂无活动批次", "No active batches")}</h3><p>${T("空闲杯子可以开始新的制作。", "Use an available cup to start a new batch.")}</p></div>`}</div>
+      ${pageIntro("按下一步排序", "Ordered by next action", `${batchCount} 个活动批次`, `${batchCount} active batches`, "时间来自你的记录，不代表机器实时状态。", "Timing comes from your records, not live device status.")}
+      <div class="stack">${(freezingBatchRows() + taskItems) || `<div class="empty-state card"><h3>${T("暂无活动批次", "No active batches")}</h3><p>${T("空闲杯子可以开始新的制作。", "Use an available cup to start a new batch.")}</p></div>`}</div>
       <div class="alert info section-block"><strong>${T("状态说明", "About task status")}</strong>${T("冷冻时间仅供参考；上机操作在机器本体完成，APP 不读取机器运行状态。", "Freeze time is an estimate. Use the machine controls to process the batch; the app does not read machine status.")}</div>`,
   });
 }
@@ -1160,66 +1273,49 @@ function renderTaskDetail() {
 
 function renderCups() {
   const cups = Object.entries(CUP_DEFINITIONS).map(([id]) => [id, getCupProfile(id)]);
+  const count = cups.length;
   return mobilePage({
     titleZh: "杯子管理",
     titleEn: "Cup management",
+    pageClass: "cups-page",
     back: contextualBack("icecream"),
     right: `<button class="icon-button textual" type="button" data-action="add-cup">${T("添加", "Add")}</button>`,
     body: `
-      ${pageIntro(`${cups.length} 个实体杯`, `${cups.length} physical cups`, "管理杯子资料与制作历史", "Manage cup details and history", "查看、编辑或删除杯子；进入杯子后可查看对应制作记录。", "View, edit, or delete cups, and open each cup's making history.")}
+      <p class="cup-list-summary">${T(`共 ${count} 个杯子`, `${count} ${count === 1 ? "cup" : "cups"}`)}</p>
       <div class="stack">
-        ${cups.map(([id, cup]) => manageCupRow({ id, title: cup.name, color: cup.color, labelZh: `${cup.cupId === cup.name ? "" : `${cup.cupId} · `}${cup.colorLabelZh}`, labelEn: `${cup.cupId === cup.name ? "" : `${cup.cupId} · `}${cup.colorLabelEn}`, stateZh: cup.stateZh, stateEn: cup.stateEn, tone: cup.tone, historyZh: `${cup.count} 条记录`, historyEn: `${cup.count} records` })).join("")}
+        ${cups.map(([id, cup]) => manageCupRow({ id, title: cup.name, color: cup.color, labelZh: cup.colorLabelZh, labelEn: cup.colorLabelEn, historyZh: `${cup.count} 条记录`, historyEn: `${cup.count} records` })).join("")}
       </div>`,
-  });
-}
-
-function renderCupTimer() {
-  const selectedId = CUP_DEFINITIONS[state.timerCup] ? state.timerCup : Object.keys(CUP_DEFINITIONS)[0];
-  const timer = getManualTimer(selectedId);
-  const finished = timer && (timer.completedAt || timer.endsAt <= Date.now());
-  const duration = timer?.durationMinutes || 24 * 60;
-  const cups = Object.keys(CUP_DEFINITIONS).map((id) => {
-    const cup = getCupProfile(id);
-    const cupTimer = getManualTimer(id);
-    const timerLabel = cupTimer ? cupTimer.completedAt || cupTimer.endsAt <= Date.now() ? T("已结束", "Finished") : T("计时中", "Running") : T(cup.colorLabelZh, cup.colorLabelEn);
-    return `<button type="button" class="${id === selectedId ? "is-selected" : ""}" data-action="select-timer-cup" data-value="${id}" aria-pressed="${id === selectedId}"><span class="cup-selector-dot" style="--cup-color:${cup.color}"></span><strong>${escapeHtml(cup.name)}</strong><small>${timerLabel}</small></button>`;
-  }).join("");
-  return mobilePage({
-    titleZh: "手动计时", titleEn: "Manual timer", back: "icecream", pageClass: "cup-timer-page",
-    body: `${pageIntro("我的杯子", "My cups", "为杯子单独计时", "Time a cup separately", "默认 24 小时，可按实际需要修改；计时不改变制作任务。", "Starts at 24 hours and can be adjusted without changing the making task.")}
-      <div class="section-block">${sectionHeading("选择杯子", "Choose cup")}<div class="cup-selector timer-cup-selector">${cups}</div></div>
-      ${timer ? `<div class="timer-status section-block"><span>${T(finished ? "计时结束" : "剩余时间", finished ? "Timer finished" : "Time remaining")}</span><strong data-manual-timer="${selectedId}">${finished ? T("已结束", "Finished") : formatManualTimer(timer)}</strong><small>${T(`开始于 ${formatExpiry(new Date(timer.startedAt))}`, `Started ${formatExpiry(new Date(timer.startedAt))}`)}</small>${finished ? `<p>${T("请检查杯中食材是否达到食谱要求。", "Check whether the cup contents meet the recipe requirements.")}</p>` : ""}</div>` : ""}
-      <div class="section-block">${sectionHeading("计时时长", "Timer duration")}<div class="timer-duration-fields" role="group" aria-label="${T("计时时长，小时和分钟", "Timer duration, hours and minutes")}"><div class="field"><label for="timer-hours">${T("小时", "Hours")}</label><input id="timer-hours" type="number" inputmode="numeric" min="0" max="168" step="1" value="${Math.floor(duration / 60)}" /></div><span class="timer-duration-separator" aria-hidden="true">:</span><div class="field"><label for="timer-minutes">${T("分钟", "Minutes")}</label><input id="timer-minutes" type="number" inputmode="numeric" min="0" max="59" step="1" value="${String(duration % 60).padStart(2, "0")}" /></div></div></div>
-      <div class="alert info section-block"><strong>${T("计时仅供提醒", "Timer is a reminder")}</strong>${T("计时结束不代表食材已冻实，也不会自动推进制作状态。请按食谱要求并检查实际食材。", "A finished timer does not mean the mixture is fully frozen or advance the making status. Follow the recipe and check the contents.")}</div>
-      ${timer ? `<button type="button" class="timer-clear" data-action="clear-manual-timer">${T("结束并清除计时", "End and clear timer")}</button>` : ""}
-      <div class="sticky-actions">${timer && !finished ? `<div class="button-row">${button("重新开始", "Restart", "", "secondary", true, 'data-action="restart-manual-timer"')}${button("完成", "Done", "", "primary", true, 'data-action="save-manual-timer"')}</div>` : button("完成", "Done", "", "primary", true, 'data-action="finish-manual-timer"')}</div>`,
   });
 }
 
 function renderCupDetail() {
   const cup = getCupProfile(state.cup);
+  const counts = preparedRecipeCounts();
+  const history = visibleMakingHistory(recordsForCup(state.cup));
   const runtime = cup.runtime;
   const status = cupStatus(state.cup);
-  const caption = cup.name === cup.cupId ? T(cup.colorLabelZh, cup.colorLabelEn) : `${cup.cupId} · ${T(cup.colorLabelZh, cup.colorLabelEn)}`;
-  const currentTask = ["available", "awaiting-leftovers", "leftovers"].includes(runtime.status) ? "" : listRow(runtime.recipeZh, runtime.recipeEn, `${T(status.zh, status.en)} · ${runtime.portion || "--"} mL`, `${T(status.zh, status.en)} · ${runtime.portion || "--"} mL`, cupTarget(state.cup), statusPill(status.zh, status.en, status.tone), `data-cup="${state.cup}"`);
+  const portion = `${runtime.portion || "--"} mL`;
+  const currentTask = ["available", "awaiting-leftovers", "leftovers"].includes(runtime.status) ? "" : listRow(
+    runtime.recipeZh, runtime.recipeEn, `${status.zh} · ${portion}`, `${status.en} · ${portion}`,
+    cupTarget(state.cup), cupStatusPill(state.cup), `data-cup="${state.cup}"`, recordThumbnail(runtime),
+  );
   return mobilePage({
     pageClass: "icecream-overview cup-detail-page",
-    titleZh: cup.name,
-    titleEn: cup.name,
-    captionZh: caption,
-    captionEn: caption,
+    titleZh: escapeHtml(cup.name),
+    titleEn: escapeHtml(cup.name),
+    captionZh: cup.colorLabelZh,
+    captionEn: cup.colorLabelEn,
     back: "cups",
     body: `
       <article class="card cup-profile-card" style="--cup-color:${cup.color}">
         <span class="manage-cup-swatch"></span>
-        <div><p class="eyebrow">${T("杯子资料", "Cup details")}</p><h2>${escapeHtml(cup.name)}</h2><p>${T(cup.colorLabelZh, cup.colorLabelEn)}${cup.note ? ` · ${escapeHtml(cup.note)}` : ""}</p></div>
-        ${statusPill(cup.stateZh, cup.stateEn, cup.tone)}
+        <div><p class="eyebrow">${T("杯子资料", "Cup details")}</p><h2>${escapeHtml(cup.name)}</h2><p>${T(cup.colorLabelZh, cup.colorLabelEn)}</p></div>
+        ${cupStatusPill(state.cup)}
       </article>
-      <div class="metadata-grid"><div class="meta-item"><span>${T("杯子编号", "Cup ID")}</span><strong>${cup.cupId}</strong></div><div class="meta-item"><span>${T("制作记录", "Making records")}</span><strong>${cup.count}</strong></div></div>
-      ${["awaiting-leftovers", "leftovers"].includes(runtime.status) ? `<div class="alert info section-block"><strong>${T("旧批次资料已保留", "Previous batch retained")}</strong>${T("可以查看已有制作记录；新流程不再要求登记制作结果或余量。", "Existing records remain available. The new flow does not ask for a making result or leftovers.")}</div>` : ""}
+      <div class="metadata-grid cup-history-count"><div class="meta-item"><span>${T("制作记录", "Making records")}</span><strong>${history.length}</strong></div></div>
       ${currentTask ? `<div class="section-block">${sectionHeading("当前任务", "Current task")}<div class="card card-pad">${currentTask}</div></div>` : ""}
       <div class="section-block">${sectionHeading("制作历史", "Making history")}
-        <div class="stack">${state.records.filter((record) => record.cupId === state.cup).map(recordListCard).join("") || `<div class="card card-pad"><p class="result-summary">${T("该杯暂无已保存记录", "No saved records for this cup")}</p></div>`}</div>
+        <div class="stack">${history.map((record) => recordListCard(record, counts)).join("") || `<div class="card card-pad"><p class="result-summary">${T("该杯暂无已保存记录", "No saved records for this cup")}</p></div>`}</div>
       </div>
       <div class="sticky-actions"><div class="button-row">
         ${button("编辑杯子资料", "Edit cup details", "", "secondary", true, `data-action="edit-cup" data-cup-id="${state.cup}"`)}
@@ -1233,18 +1329,11 @@ function renderCupEdit() {
   return mobilePage({
     titleZh: "编辑杯子",
     titleEn: "Edit cup",
-    captionZh: cup.cupId,
-    captionEn: cup.cupId,
     back: "cups",
     body: `
-      <article class="card cup-edit-summary" style="--cup-color:${cup.color}">
-        <span class="manage-cup-swatch"></span>
-        <div><span>${T("杯子编号", "Cup ID")}</span><strong>${cup.cupId}</strong><small>${T("系统编号不可修改", "System ID cannot be changed")}</small></div>
-      </article>
       <div class="section-block">${sectionHeading("基础资料", "Basic details")}
         <div class="card card-pad form-grid">
           <div class="field"><label for="cup-edit-name">${T("杯子名称", "Cup name")}</label><input id="cup-edit-name" maxlength="12" value="${escapeHtml(cup.name)}" /></div>
-          <div class="field"><label for="cup-edit-note">${T("使用备注", "Usage note")}</label><textarea id="cup-edit-note" maxlength="40" placeholder="${T("例如：Mia 常用杯", "For example: Usually used for Mia")}">${escapeHtml(cup.note)}</textarea></div>
         </div>
       </div>
       <div class="section-block">${sectionHeading("识别颜色", "Identification color")}
@@ -1252,37 +1341,74 @@ function renderCupEdit() {
           ${CUP_COLOR_OPTIONS.map((option) => `<label class="cup-color-option" style="--option-color:${option.value}"><input type="radio" name="cup-color" value="${option.value}" ${option.value === cup.color ? "checked" : ""} /><span></span><strong>${T(option.zh, option.en)}</strong></label>`).join("")}
         </div>
       </div>
-      <div class="alert info section-block"><strong>${T("可编辑范围", "Editable details")}</strong>${T("这里只修改杯子名称、识别颜色和备注。当前状态及制作历史由制作任务生成，不能在这里修改。", "Only the cup name, identification color, and note can be edited here. Current status and making history come from making tasks and cannot be changed here.")}</div>
       <div class="sticky-actions">${button("保存修改", "Save changes", "", "primary", true, `data-action="save-cup"`)}</div>`,
   });
 }
 
-const RECIPE_CATEGORIES = [
+const RECIPE_SHELVES = [
   ["all", "全部食谱", "All recipes"],
-  ["low-sugar", "低添加糖", "Low added sugar"],
-  ["high-protein", "高蛋白", "High protein"],
-  ["sorbet", "雪葩", "Sorbet"],
+  ["favorites", "我的收藏", "My favorites"],
+  ["prepared", "已制作", "Previously prepared"],
 ];
 
-function recipeCategoryTabs() {
-  return `<div class="filter-options section-block" role="group" aria-label="${T("食谱分类", "Recipe categories")}">${RECIPE_CATEGORIES.map(([id, zh, en]) => {
-    const selected = id === "all" ? !state.filters.size : state.filters.has(id);
-    return `<button type="button" class="chip ${selected ? "is-selected" : ""}" aria-pressed="${selected}" data-action="recipe-category" data-value="${id}">${T(zh, en)}</button>`;
+const RECIPE_DIET_TAGS = [
+  ["no-added-sugar", "无添加糖", "No added sugar"],
+  ["high-protein", "高蛋白", "High protein"],
+  ["fruit-only", "纯水果", "Fruit only"],
+  ["vegan", "纯素", "Vegan"],
+  ["dairy-free", "无乳制品", "Dairy-free"],
+];
+
+const RECIPE_TYPES = [
+  ["fruit-ice-cream", "水果冰淇淋", "Fruit ice cream"],
+  ["regular-ice-cream", "常规冰淇淋", "Ice cream"],
+  ["gelato", "Gelato", "Gelato"],
+  ["sorbet", "雪葩", "Sorbet"],
+  ["frozen-yogurt", "冻酸奶", "Frozen yogurt"],
+  ["milkshake", "奶昔", "Milkshake"],
+  ["slush", "冰沙", "Slush"],
+  ["low-fat-ice-cream", "低脂冰淇淋", "Low-fat ice cream"],
+];
+
+function recipeFilterChips(options, action, isSelected, label) {
+  return `<div class="filter-options" role="group" aria-label="${label}">${options.map(([id, zh, en]) => {
+    const selected = isSelected(id);
+    return `<button type="button" class="chip ${selected ? "is-selected" : ""}" aria-pressed="${selected}" data-action="${action}" data-value="${id}">${T(zh, en)}</button>`;
   }).join("")}</div>`;
 }
 
+function recipeCategoryTabs() {
+  const narrowed = activeRecipeDietTags().size > 0 || (state.route !== "recipes" && Boolean(state.recipeType));
+  return `<div class="section-block recipe-library-filters">
+    ${recipeFilterChips(RECIPE_SHELVES, "recipe-shelf", (id) => id === state.recipeShelf && (id !== "all" || !narrowed), T("食谱范围", "Recipe collection"))}
+    ${recipeFilterChips(RECIPE_DIET_TAGS, "recipe-category", (id) => state.filters.has(id), T("食谱标签", "Recipe tags"))}
+  </div>`;
+}
+
+function recipeTypeFilters(type = state.recipeType) {
+  return `<div class="section-block">${sectionHeading("冰品种类", "Dessert types")}
+    ${recipeFilterChips(RECIPE_TYPES, "recipe-type", (id) => type === id, T("冰品种类", "Dessert types"))}
+  </div>`;
+}
+
 function renderRecipes() {
-  return mobilePage({titleZh: "食谱中心", titleEn: "Recipe center", back: "icecream", pageClass: "recipe-center-page", body: `<div class="search-box" data-route-card="recipe-search" tabindex="0"><span>${T("搜索食谱、食材或口味", "Search recipes, ingredients, or flavors")}</span></div>${recipeCategoryTabs()}<div class="section-block" aria-live="polite">${recipeResultCards(matchingRecipes("", state.filters))}</div>`});
+  return mobilePage({titleZh: "食谱中心", titleEn: "Recipe center", back: "icecream", pageClass: "recipe-center-page", body: `<div class="search-box" data-route-card="recipe-search" tabindex="0"><span>${T("搜索食谱、食材或口味", "Search recipes, ingredients, or flavors")}</span></div>${recipeCategoryTabs()}<div class="section-block" aria-live="polite">${recipeResultCards(matchingLibraryRecipes("", ""))}</div>`});
 }
 
 function renderRecipeResults() {
-  const recipes = matchingRecipes();
+  const fromMaking = isMakingRecipeSearch();
+  const type = recipeSearchType();
+  const recipes = matchingRecipeSearch(state.recipeQuery);
+  const emptyMakingSearch = fromMaking && !recipes.length;
   return mobilePage({
-    titleZh: "食谱结果", titleEn: "Recipe results", back: "recipes", pageClass: "recipe-center-page",
-    captionZh: `${recipes.length} 个食谱`, captionEn: `${recipes.length} recipes`,
+    titleZh: "食谱结果", titleEn: "Recipe results", back: fromMaking ? "make-recipe" : "recipes", pageClass: "recipe-center-page",
+    captionZh: emptyMakingSearch ? "" : `${recipes.length} 个食谱`,
+    captionEn: emptyMakingSearch ? "" : `${recipes.length} recipes`,
     body: `<div class="search-box" data-route-card="recipe-search" tabindex="0"><span>${escapeHtml(state.recipeQuery) || T("搜索食谱、食材或口味", "Search recipes, ingredients, or flavors")}</span></div>
-      ${recipeCategoryTabs()}
-      <p class="result-summary" aria-live="polite">${T(`找到 ${recipes.length} 个食谱`, `${recipes.length} recipes found`)}</p>${recipeResultCards(recipes)}`,
+      ${emptyMakingSearch ? noMatchingRecipeMessage() : `
+        ${fromMaking ? "" : recipeCategoryTabs()}
+        ${type ? recipeTypeFilters(type) : ""}
+        <p class="result-summary" aria-live="polite">${T(`找到 ${recipes.length} 个食谱`, `${recipes.length} recipes found`)}</p>${recipeResultCards(recipes)}`}`,
   });
 }
 
@@ -1296,8 +1422,21 @@ function highlightRecipeSearch(text, query) {
   return `${escapeHtml(text.slice(0, position))}<mark>${escapeHtml(text.slice(position, position + query.length))}</mark>${escapeHtml(text.slice(position + query.length))}`;
 }
 
-function recipeSearchContent() {
+function noMatchingRecipeMessage() {
+  return `<p class="result-summary" role="status">${T("没有找到匹配的食谱", "No matching recipes")}</p>`;
+}
+
+function isEmptyMakingSearch() {
   const query = state.recipeSearchDraft.trim();
+  return isMakingRecipeSearch() && Boolean(query) && !matchingRecipeSearch(query).length;
+}
+
+function recipeSearchContent(emptyMakingSearch) {
+  const query = state.recipeSearchDraft.trim();
+  if (emptyMakingSearch) return noMatchingRecipeMessage();
+  if (state.route === "recipe-search" && recipeSearchType()) {
+    return recipeResultCards(matchingRecipeSearch(query));
+  }
   if (state.route === "make-recipe" && state.batchSearchResults && query) {
     const matches = matchingRecipes(query, new Set());
     return `<p class="result-summary" role="status">${T(`找到 ${matches.length} 个食谱`, `${matches.length} recipes found`)}</p>${matches.length ? matches.map((recipe) => `<div class="batch-recipe-suggestion"><button type="button" class="batch-recipe-choice" data-batch-recipe="${recipe.index}"><strong>${escapeHtml(T(recipe.zh, recipe.en))}</strong><small>${escapeHtml(T(recipe.metaZh, recipe.metaEn))}</small><span class="selection-hint">${T("选择此食谱", "Choose recipe")}</span></button><button type="button" class="recipe-detail-link" data-batch-recipe-detail="${recipe.index}">${T("预览详情", "Preview")}</button></div>`).join("") : `<p class="result-summary">${T("未找到相关食谱，试试其他食材或口味", "No matching recipes. Try another ingredient or flavor.")}</p>${recipeSearchDiscovery()}`}`;
@@ -1306,7 +1445,9 @@ function recipeSearchContent() {
     const editing = state.recipeHistoryEditing;
     return `<div class="recipe-search-section-heading"><h3 class="recipe-search-section-title">${T("历史搜索", "Recent searches")}</h3>${state.recipeSearchHistory.length ? `<div class="recipe-history-tools">${editing ? `<button type="button" data-action="clear-search-history">${T("清空全部", "Clear all")}</button>` : ""}<button type="button" data-action="edit-search-history" aria-label="${T(editing ? "完成历史管理" : "管理历史搜索", editing ? "Finish editing history" : "Manage search history")}">${editing ? T("完成", "Done") : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg>`}</button></div>` : ""}</div><div class="chip-row search-history">${state.recipeSearchHistory.length ? state.recipeSearchHistory.map((term) => `<button type="button" class="chip recipe-history-chip" data-action="${editing ? "delete-search-history" : "search-term"}" data-value="${escapeHtml(term)}" ${editing ? `aria-label="${escapeHtml(T(`删除历史搜索：${term}`, `Delete recent search: ${term}`))}"` : ""}><span>${escapeHtml(term)}</span>${editing ? '<span aria-hidden="true">×</span>' : ""}</button>`).join("") : `<p class="result-summary">${T("还没有搜索记录", "No recent searches")}</p>`}</div>${recipeSearchDiscovery()}`;
   }
-  const recipes = matchingRecipes(query, new Set());
+  const recipes = state.route === "recipe-search"
+    ? matchingRecipeSearch(query)
+    : matchingRecipes(query, new Set());
   const ingredients = [...new Set(recipes.flatMap((recipe) => recipe.ingredients.map(([zh, en]) => T(zh, en))))].filter((ingredient) => ingredient.toLowerCase().includes(query.toLowerCase())).slice(0, 4);
   const suggestions = [...ingredients.map((term) => [term, T("食材", "Ingredient")]), ...recipes.map((recipe) => [T(recipe.zh, recipe.en), T("食谱", "Recipe")])].slice(0, 8);
   return `<p class="result-summary" role="status">${suggestions.length ? T("选择搜索建议，查看相关食谱", "Choose a suggestion to see matching recipes") : T("未找到相关食谱，试试其他食材或口味", "No matching recipes. Try another ingredient or flavor.")}</p><div class="recipe-search-suggestions">${suggestions.map(([term, kind]) => `<button type="button" class="recipe-search-suggestion" data-action="search-term" data-value="${escapeHtml(term)}"><span class="recipe-search-icon" aria-hidden="true"></span><span class="recipe-suggestion-name">${highlightRecipeSearch(term, query)}</span><small>${kind}</small><span aria-hidden="true">↗</span></button>`).join("")}</div>${suggestions.length ? "" : recipeSearchDiscovery()}`;
@@ -1315,7 +1456,10 @@ function recipeSearchContent() {
 function updateRecipeSearchContent() {
   const content = app.querySelector("#recipe-live-results");
   if (content) {
-    content.innerHTML = recipeSearchContent();
+    const emptyMakingSearch = isEmptyMakingSearch();
+    const types = app.querySelector("#recipe-search-types");
+    if (types) types.hidden = emptyMakingSearch;
+    content.innerHTML = recipeSearchContent(emptyMakingSearch);
     if (state.route === "make-recipe") content.hidden = !state.batchSearchOpen;
   }
   const clear = app.querySelector('[data-action="clear-recipe-search"]');
@@ -1341,24 +1485,24 @@ function submitRecipeSearch(query) {
 }
 
 function renderRecipeSearch() {
+  const emptyMakingSearch = isEmptyMakingSearch();
   return mobilePage({
-    titleZh: "搜索食谱", titleEn: "Search recipes", back: "recipes",
+    titleZh: "搜索食谱", titleEn: "Search recipes", back: isMakingRecipeSearch() ? "make-recipe" : "recipes",
     body: `<form class="recipe-search-page-bar" id="recipe-search-form" role="search"><div class="recipe-search-input"><span class="recipe-search-icon" aria-hidden="true"></span><input id="recipe-query" type="search" enterkeyhint="search" autocomplete="off" value="${escapeHtml(state.recipeSearchDraft)}" placeholder="${T("搜索食谱、食材或口味", "Recipes, ingredients, flavors")}" aria-label="${T("搜索食谱或食材", "Search recipes or ingredients")}" aria-controls="recipe-live-results" /><button type="button" class="recipe-search-clear" data-action="clear-recipe-search" aria-label="${T("清空搜索", "Clear search")}" ${state.recipeSearchDraft ? "" : "hidden"}>×</button></div><button class="recipe-search-action" type="submit">${T("搜索", "Search")}</button></form>
-      <div id="recipe-live-results" class="section-block">${recipeSearchContent()}</div>`,
+      <div id="recipe-search-types" ${emptyMakingSearch ? "hidden" : ""}>${recipeTypeFilters(recipeSearchType())}</div>
+      <div id="recipe-live-results" class="section-block">${recipeSearchContent(emptyMakingSearch)}</div>`,
   });
 }
 
 function renderRecipeFilter() {
-  const chip = (id, zh, en) => `<button type="button" class="chip ${state.filters.has(id) ? "is-selected" : ""}" aria-pressed="${state.filters.has(id)}" data-action="toggle-filter" data-value="${id}">${T(zh, en)}</button>`;
+  const count = matchingLibraryRecipes(state.recipeQuery).length;
   return mobilePage({
-    titleZh: "筛选食谱", titleEn: "Filter recipes", back: "recipe-results",
+    titleZh: "筛选食谱", titleEn: "Filter recipes", back: "recipe-results", pageClass: "recipe-center-page",
     right: `<button class="icon-button textual" data-action="reset-filters">${T("重置", "Reset")}</button>`,
-    body: `<p class="result-summary">${T("不同类别同时满足，同类程序可多选。", "Combine categories; select any matching program.")}</p>
-      <div class="section-block">${sectionHeading("饮食偏好", "Dietary preferences")}<div class="filter-options">${chip("low-sugar", "低添加糖", "Low added sugar")}${chip("high-protein", "高蛋白", "High protein")}${chip("vegan", "植物基", "Plant-based")}</div></div>
-      <div class="section-block">${sectionHeading("机器程序", "Machine program")}<div class="filter-options">${chip("ice-cream", "ICE CREAM", "ICE CREAM")}${chip("sorbet", "SORBET", "SORBET")}${chip("lite", "LITE ICE CREAM", "LITE ICE CREAM")}</div></div>
-      <div class="alert info section-block"><strong>${T("份量可在选定食谱后调整", "Adjust portions after choosing a recipe")}</strong>${T("每个示例食谱均支持 50 / 100 / 250 / 500 mL，无需用份量排除食谱。", "All demo recipes support 50 / 100 / 250 / 500 mL.")}</div>
-      <p class="result-summary">${T("筛选依据示例配方，制作前仍需核对包装和交叉接触信息。", "Filters use demo ingredients. Check labels and cross-contact before making.")}</p>
-      <div class="sticky-actions">${button(`查看 ${matchingRecipes().length} 个食谱`, `View ${matchingRecipes().length} recipes`, "recipe-results", "primary", true)}</div>`,
+    body: `${recipeCategoryTabs()}
+      ${recipeTypeFilters()}
+      <p class="result-summary">${T("分类依据演示配方，正式分类以整机食谱清单为准。", "Categories use demo recipes. Refer to the final product recipe list for official categories.")}</p>
+      <div class="sticky-actions">${button(`查看 ${count} 个食谱`, `View ${count} recipes`, "recipe-results", "primary", true)}</div>`,
   });
 }
 
@@ -1375,10 +1519,45 @@ function matchingRecipes(query = state.recipeQuery, filters = state.filters) {
     const programs = [...filters].filter((filter) => ["ice-cream", "sorbet", "lite"].includes(filter));
     if (programs.length && !programs.some((filter) => recipe.program === { "ice-cream": "ICE CREAM", sorbet: "SORBET", lite: "LITE ICE CREAM" }[filter])) return false;
     return [...filters].every((filter) => {
-      if (["low-sugar", "high-protein", "vegan"].includes(filter)) return recipe.tags.includes(filter);
+      if (filter === "dairy-free") return recipe.tags.includes("vegan") && !recipe.allergens.includes("dairy");
+      if (["low-sugar", "no-added-sugar", "high-protein", "fruit-only", "vegan"].includes(filter)) return recipe.tags.includes(filter);
       return true;
     });
   });
+}
+
+function activeRecipeDietTags() {
+  return new Set(RECIPE_DIET_TAGS.map(([id]) => id).filter((id) => state.filters.has(id)));
+}
+
+function resetRecipeFilters() {
+  state.filters.clear();
+  state.recipeShelf = "all";
+  state.recipeType = "";
+}
+
+function matchingLibraryRecipes(query, type = state.recipeType) {
+  const counts = state.recipeShelf === "prepared" ? preparedRecipeCounts() : null;
+  return matchingRecipes(query, activeRecipeDietTags()).filter((recipe) => {
+    if (state.recipeShelf === "favorites" && !state.favoriteRecipes.includes(recipe.index)) return false;
+    if (counts && !counts.has(recipe.index)) return false;
+    return !type || recipe.type === type;
+  });
+}
+
+function isMakingRecipeSearch() {
+  return state.recipeSearchOrigin === "make-recipe"
+    && (state.route === "recipe-search" || state.route === "recipe-results");
+}
+
+function recipeSearchType() {
+  return isMakingRecipeSearch() ? state.makingRecipeType : state.recipeType;
+}
+
+function matchingRecipeSearch(query) {
+  if (!isMakingRecipeSearch()) return matchingLibraryRecipes(query);
+  const type = recipeSearchType();
+  return matchingRecipes(query, new Set()).filter((recipe) => !type || recipe.type === type);
 }
 
 function recipeResultCards(recipes) {
@@ -1387,24 +1566,11 @@ function recipeResultCards(recipes) {
 
 function recipeAllergenLabel(recipe) {
   const labels = { dairy: ["乳制品", "Dairy"], oats: ["燕麦", "Oats"], nuts: ["坚果", "Nuts"], egg: ["鸡蛋", "Egg"], soy: ["大豆", "Soy"] };
-  return recipe.allergens.length ? recipe.allergens.map((allergen) => T(...labels[allergen])).join(" · ") : T("配方未列常见过敏原，请核对包装", "No common allergens listed; check labels");
+  return recipe.allergens.length ? recipe.allergens.map((allergen) => T(...labels[allergen])).join(" · ") : T("配方未列出常见过敏原", "No common allergens listed in this recipe");
 }
 
 function getRecipeIngredients(portion, index = state.detailRecipeIndex) {
   return getRecipe(index).ingredients.map(([zh, en, grams]) => [zh, en, `${Math.round(grams * Number(portion) / 250 * 10) / 10} g`]);
-}
-
-function getRecipeCalories(portion, index = state.detailRecipeIndex) {
-  const total = getRecipe(index).ingredients.reduce((calories, [ingredientZh, , grams]) => calories + grams * INGREDIENT_KCAL_PER_100G[ingredientZh] / 100, 0);
-  return Math.round(total * Number(portion) / 250);
-}
-
-function recipeCalorieContent(portion, index) {
-  return `<div class="ingredient-row"><span>${T(`本次总热量 · ${portion} mL`, `Total calories · ${portion} mL`)}</span><strong>${T("约", "Approx.")} ${getRecipeCalories(portion, index)} kcal</strong></div>`;
-}
-
-function recipeCalorieSection(index) {
-  return `<div class="section-block">${sectionHeading("热量估算", "Estimated calories")}<div class="card card-pad" data-recipe-calories aria-live="polite">${recipeCalorieContent(state.portion, index)}</div><p class="result-summary">${T("按配方用量与常见食材热量估算，实际因品牌及配方调整而异；多人分食时按实际食用量计算。", "Estimated from recipe quantities and typical ingredient calories. Brands and recipe changes affect actual values; shared servings depend on the amount eaten.")}</p></div>`;
 }
 
 function recipeIngredientRows(ingredients) {
@@ -1419,12 +1585,35 @@ function updateRecipeDetailPortion() {
   });
   const ingredientList = app.querySelector("[data-recipe-ingredients]");
   if (ingredientList) ingredientList.innerHTML = recipeIngredientRows(getRecipeIngredients(state.portion, state.route === "make-portion" ? state.batchRecipeIndex : state.detailRecipeIndex));
-  const calorieCard = app.querySelector("[data-recipe-calories]");
-  if (calorieCard) calorieCard.innerHTML = recipeCalorieContent(state.portion, state.route === "make-portion" ? state.batchRecipeIndex : state.detailRecipeIndex);
+
 }
 
-function recipeSafetyCard() {
-  return `<section class="recipe-safety-card is-warning section-block"><h3>${T("潜在过敏原提示", "Potential allergen notice")}</h3><p class="readable-copy">${T("本配方列出的过敏原：", "Listed recipe allergens: ")}${recipeAllergenLabel(getRecipe())}</p><p class="readable-copy">${T("信息仅用于风险提示。制作前请核对实际食材包装、品牌配方及交叉接触信息。", "This information is a risk notice only. Check actual ingredient labels, brand recipes, and cross-contact information before preparing.")}</p></section>`;
+function recipeSafetyCard(recipe) {
+  return `<section class="recipe-safety-card is-warning section-block" aria-labelledby="recipe-allergen-title">
+    <h2 id="recipe-allergen-title">${T("潜在过敏原", "Potential allergens")}</h2>
+    <p>${recipeAllergenLabel(recipe)}</p>
+    <p>${T("制作前请核对食材包装上的配料及交叉接触提示。", "Before making, check ingredient labels and cross-contact warnings.")}</p>
+  </section>`;
+}
+
+function recipeMakingSteps() {
+  return `<section class="section-block recipe-making-steps">
+    ${sectionHeading("制作步骤", "Steps")}
+    <div class="timeline">
+      <div class="timeline-row">
+        <h3>${T("准备食材", "Prepare ingredients")}</h3>
+        <p>${T("按食谱用量准备食材，水果按需洗净、去皮、去核。", "Measure the ingredients according to the recipe; wash, peel, and pit fruit as needed.")}</p>
+      </div>
+      <div class="timeline-row">
+        <h3>${T("混合并装杯", "Blend and fill")}</h3>
+        <p>${T("混合均匀，装杯不超过 MAX FILL 线。", "Blend evenly and fill below the MAX FILL line.")}</p>
+      </div>
+      <div class="timeline-row">
+        <h3>${T("冷冻后上机制作", "Freeze, then process")}</h3>
+        <p>${T("密封水平冷冻至少 24 小时，确认冻实后在机器面板选择推荐程序。", "Seal and freeze level for at least 24 hours. Confirm fully frozen, then select the recommended program on the machine.")}</p>
+      </div>
+    </div>
+  </section>`;
 }
 
 function renderRecipeDetail() {
@@ -1432,22 +1621,31 @@ function renderRecipeDetail() {
   const choosingForBatch = state.recipeOrigin === "make-recipe" || (state.recipeOrigin === "recipe-results" && state.recipeSearchOrigin === "make-recipe");
   return mobilePage({
     titleZh: "食谱详情", titleEn: "Recipe detail", back: state.recipeOrigin || "recipes",
+    pageClass: "recipe-detail-page",
     right: `<button class="icon-button textual" data-action="toggle-favorite">${state.favoriteRecipes.includes(recipe.index) ? T("已收藏", "Saved") : T("收藏", "Save")}</button>`,
     body: `${recipePhoto(recipe) ? `<img class="recipe-detail-image" src="${recipePhoto(recipe)}" alt="${escapeHtml(T(recipe.zh, recipe.en))}" />` : `<div class="recipe-art ${recipe.flavor} recipe-detail-image" role="img" aria-label="${T(recipe.zh, recipe.en)}"></div>`}
-      ${pageIntro("食谱", "Recipe", recipe.zh, recipe.en, recipe.metaZh, recipe.metaEn)}
-      <div class="recipe-meta"><span class="mini-badge">${recipeAllergenLabel(recipe)}</span><span class="mini-badge">${recipe.program}</span></div>
-      ${recipeSafetyCard()}
-      <div class="section-block">${sectionHeading("制作份量 · mL", "Portion · mL")}<div class="portion-selector">${["50", "100", "250", "500"].map((value) => `<button class="${state.portion === value ? "is-selected" : ""}" data-action="select-portion" data-value="${value}" aria-pressed="${state.portion === value}">${value}</button>`).join("")}</div></div>
-      <div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad" data-recipe-ingredients>${recipeIngredientRows(getRecipeIngredients(state.portion))}</div><p class="result-summary">${T("配方与换算为交互演示数据，以正式食谱和杯体 MAX FILL 线为准。", "Demo ingredient amounts; follow the published recipe and MAX FILL line.")}</p></div>
-      ${recipeCalorieSection(recipe.index)}
+      <h2 class="recipe-detail-title">${T(recipe.zh, recipe.en)}</h2>
+      ${recipeSafetyCard(recipe)}
+      ${makingPortionPicker()}
+      <div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad" data-recipe-ingredients>${recipeIngredientRows(getRecipeIngredients(state.makingPortion))}</div></div>
       <div class="section-block">${sectionHeading("时间与程序", "Timing & program")}<div class="metrics-grid"><div class="metric-item"><span>${T("准备", "Prep")}</span><strong>15 min</strong></div><div class="metric-item"><span>${T("至少冷冻", "Minimum freeze")}</span><strong>24 h</strong></div><div class="metric-item"><span>${T("机器程序", "Program")}</span><strong>${recipe.program}</strong></div></div></div>
-      <div class="section-block">${sectionHeading("制作步骤", "Steps")}<div class="timeline"><div class="timeline-row"><h3>${T("准备食材", "Prepare ingredients")}</h3><p>${T("按上方用量准备食材，水果洗净去皮去核。", "Measure the ingredients above; wash, peel, and pit fruit as needed.")}</p></div><div class="timeline-row"><h3>${T("混合并装杯", "Blend and fill")}</h3><p>${T("混合均匀，装杯不超过 MAX FILL 线。", "Blend evenly and fill below the MAX FILL line.")}</p></div><div class="timeline-row"><h3>${T("冷冻后上机制作", "Freeze, then process")}</h3><p>${T("密封水平冷冻至少 24 小时，确认冻实后在机器面板选择推荐程序。", "Seal and freeze level for at least 24 hours. Confirm fully frozen, then select the recommended program on the machine.")}</p></div></div></div>
-      <div class="sticky-actions">${button(choosingForBatch ? "选择此食谱并返回" : "使用这个食谱", choosingForBatch ? "Choose recipe and return" : "Use this recipe", "", "primary", true, 'data-action="use-recipe"')}</div>`,
+      ${recipeMakingSteps()}
+      <div class="sticky-actions">${button(choosingForBatch ? "选择此食谱" : "使用这个食谱", choosingForBatch ? "Choose recipe" : "Use this recipe", "", "primary", true, 'data-action="use-recipe"')}</div>`,
   });
 }
 
 function renderFavorites() {
   return mobilePage({titleZh: "我的收藏", titleEn: "Favorites", back: contextualBack("icecream-mine"), body: state.favoriteRecipes.length ? recipeResultCards(state.favoriteRecipes.map((index) => getRecipe(index))) : `<div class="empty-state card">${T("还没有收藏，去食谱详情收藏喜欢的口味吧。", "No favorites yet. Save a recipe from its detail page.")}</div>`});
+}
+
+function renderPreparedRecipes() {
+  const recipes = preparedRecipeIndexes().map((index) => getRecipe(index));
+  return mobilePage({
+    titleZh: "我做过的",
+    titleEn: "Recipes I’ve made",
+    back: contextualBack("icecream-mine"),
+    body: recipes.length ? recipeResultCards(recipes) : `<div class="empty-state card">${T("冷冻倒计时结束后，做过的食谱会显示在这里。", "Recipes appear here after their freezer timer ends.")}</div>`,
+  });
 }
 
 function renderRecent() {
@@ -1551,13 +1749,13 @@ function renderMakeCup() {
     back: "make-recipe",
     body: `
       ${stepper(4)}
-      ${pageIntro("实体杯对应", "Physical cup match", "选择一个空闲杯子", "Choose an available cup", "请按编号和颜色拿取同一个实体杯。", "Use the physical cup with the same number and color.")}
+      ${pageIntro("实体杯对应", "Physical cup match", "选择一个空闲杯子", "Choose an available cup", "请按杯子名称确认要使用的实体杯。", "Use the cup name to identify the physical cup.")}
       <div class="stack">
         ${cupOption("cup-1", "CUP 1 · 森林绿", "CUP 1 · Forest green", "草莓酸奶冰淇淋冷冻中，不能覆盖", "Strawberry yogurt ice cream is freezing and cannot be overwritten", true)}
         ${cupOption("cup-2", "CUP 2 · 蜂蜜棕", "CUP 2 · Honey brown", "有余量，清空并清洁后可使用", "Has leftovers; empty and clean before reuse", true)}
         ${cupOption("cup-3", "CUP 3 · 雾紫", "CUP 3 · Mist purple", "空闲 · 适合本次 250 mL 批次", "Available · Fits this 250 mL batch")}
       </div>
-      <div class="alert success section-block"><strong>${T("请拿取 CUP 3", "Use CUP 3")}</strong>${T("装杯前再次核对杯子底部编号和雾紫色标签。", "Before filling, re-check the number and mist-purple label on the cup.")}</div>
+      <div class="alert success section-block"><strong>${T("请拿取 CUP 3", "Use CUP 3")}</strong>${T("装杯前确认拿对了杯子。", "Check that you have the right cup before filling it.")}</div>
       <div class="sticky-actions">${button("创建批次并开始备料", "Create batch and start prep", "prep", "primary", true)}</div>`,
   });
 }
@@ -1599,7 +1797,7 @@ function renderFillCup() {
           <span style="position:absolute;right:-54px;top:39px;color:var(--status-warning);font-size:9px">MAX FILL</span>
           <div style="position:absolute;left:-11px;right:-11px;top:-17px;height:26px;border-radius:14px;background:#a69ea2"></div>
         </div>
-        <h2 style="margin:0;font-family:var(--font-brand);font-size:24px;font-weight:400">${T("不要超过 MAX FILL 线", "Stay below the MAX FILL line")}</h2>
+        <h2 style="margin:0;font:var(--type-weight-light) var(--type-heading-l-font-size)/var(--type-heading-l-line-height) var(--font-brand)">${T("不要超过 MAX FILL 线", "Stay below the MAX FILL line")}</h2>
         <p style="margin:7px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("留出膨胀空间，擦净杯口后盖紧密封杯盖。", "Leave expansion room, wipe the rim, and secure the storage lid.")}</p>
       </div>
       <div class="section-block">${sectionHeading("完成前核对", "Final checks")}
@@ -1619,13 +1817,13 @@ function renderFreezeConfirm() {
     titleEn: "Confirm freezing",
     back: "fill-cup",
     body: `
-      ${pageIntro("预冻管理", "Pre-freeze tracking", "杯子什么时候放入冷冻室？", "When did the cup go into the freezer?", "请记录实际时间，APP 将据此推算预计可制作时间。", "Record the actual time so the app can estimate when the batch may be ready.")}
+      ${pageIntro("预冻管理", "Pre-freeze tracking", "杯子什么时候放入冷冻室？", "When did the cup go into the freezer?", "请记录实际时间，APP 将据此推算预计可上机制作时间。", "Record the actual time so the app can estimate when the batch may be ready.")}
       <div class="form-grid">
         <div class="field"><label>${T("日期", "Date")}</label><input value="2026-09-09" aria-label="${T("入冻日期", "Freezer date")}" /></div>
         <div class="field"><label>${T("时间", "Time")}</label><input value="19:10" aria-label="${T("入冻时间", "Freezer time")}" /></div>
         <div class="field"><label>${T("冷冻室位置（可选）", "Freezer location (optional)")}</label><select><option>${T("主冷冻室 · 中层", "Main freezer · Middle shelf")}</option><option>${T("主冷冻室 · 下层", "Main freezer · Lower shelf")}</option></select></div>
       </div>
-      <article class="card time-hero section-block"><p>${T("预计可制作时间", "Estimated ready time")}</p><div class="time-value">19:10</div><p>${T("明天 · 至少预冻 24 小时", "Tomorrow · Freeze at least 24 hours")}</p>${sourceNote()}</article>
+      <article class="card time-hero section-block"><p>${T("预计可上机制作时间", "Estimated ready time")}</p><div class="time-value">19:10</div><p>${T("明天 · 至少预冻 24 小时", "Tomorrow · Freeze at least 24 hours")}</p>${sourceNote()}</article>
       <div class="alert info section-block"><strong>${T("提醒会同步到 Momcozy APP", "Reminder will appear in the Momcozy App")}</strong>${T("到时提醒只依据你记录的时间，不表示机器或冷冻室已检测完成。", "The reminder uses your recorded time only; it does not mean the machine or freezer detected completion.")}</div>
       <div class="sticky-actions">${button("开始计时", "Start timer", "freeze-countdown", "primary", true)}</div>`,
   });
@@ -1642,7 +1840,7 @@ function renderFreezeCountdown() {
       <article class="card time-hero" style="padding-top:32px;padding-bottom:28px">
         ${statusPill("冷冻中", "Freezing", "info")}
         <div class="time-value">17:42:18</div>
-        <p>${T("距离预计可制作时间", "Until estimated ready time")}</p>
+        <p>${T("距离预计可上机制作时间", "Until estimated ready time")}</p>
         <div class="progress-track" style="margin:20px 12px 0"><div class="progress-fill" style="width:8%"></div></div>
         ${sourceNote()}
       </article>
@@ -1650,7 +1848,7 @@ function renderFreezeCountdown() {
         <div class="card card-pad stack compact">
           ${listRow("草莓酸奶冰淇淋", "Strawberry yogurt ice cream", "Mia · 250 mL", "Mia · 250 mL", "recipe-detail")}
           ${listRow("实际入冻", "Recorded freezer time", "今天 19:10", "Today 7:10 PM", "", T("可修改", "Editable"))}
-          ${listRow("最早可制作", "Earliest ready", "明天 19:10", "Tomorrow 7:10 PM", "", T("至少 24 小时", "At least 24 hours"))}
+          ${listRow("最早可上机制作", "Earliest ready", "明天 19:10", "Tomorrow 7:10 PM", "", T("至少 24 小时", "At least 24 hours"))}
         </div>
       </div>
       <div class="section-block">${sectionHeading("预冻建议", "Freezing tips")}
@@ -1662,7 +1860,7 @@ function renderFreezeCountdown() {
 
 function renderFreezeReady() {
   return mobilePage({
-    titleZh: "预计可制作",
+    titleZh: "预计可上机制作",
     titleEn: "Estimated ready",
     captionZh: "CUP 3",
     captionEn: "CUP 3",
@@ -1770,162 +1968,196 @@ function renderEatRecord() {
   });
 }
 
+function makingRecipeRow(recipe) {
+  const name = `<span class="batch-recipe-name">${escapeHtml(T(recipe.zh, recipe.en))}</span>`;
+  return `<button type="button" class="search-box batch-recipe-row" data-route="recipe-search" aria-label="${escapeHtml(T(`更换食谱，当前为${recipe.zh}`, `Change recipe. Currently ${recipe.en}`))}">
+    ${name}<span class="batch-recipe-change">${T("更换", "Change")}</span>
+  </button>`;
+}
+
 function renderMvpChooseRecipe() {
   const recipe = getRecipe(state.batchRecipeIndex);
   return mobilePage({
-    titleZh: "制作冰淇淋",
-    titleEn: "Make ice cream",
+    ...MAKING_PAGE_TITLE,
     pageClass: "make-flow-page make-recipe-page",
     back: "icecream",
     footerActions: button("下一步", "Next", "make-portion", "primary", true),
     body: `
-      ${stepper(1, 4, false, true)}
-      <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 1 步", "Step 1")}</p><h2>${T("选择食谱", "Choose recipe")}</h2></div><p>${T("选择本次制作的食谱，并查看潜在过敏原提示。", "Choose a recipe for this batch and review its potential allergen notice.")}</p></div>
-      <div class="section-block">${sectionHeading("选择食谱", "Choose a recipe")}
-        <div class="search-box batch-recipe-search" role="button" aria-label="${escapeHtml(T(`已选食谱：${recipe.zh}，点击更换`, `Selected recipe: ${recipe.en}. Search to change`))}" data-route-card="recipe-search" tabindex="0"><span>${escapeHtml(T(recipe.zh, recipe.en))}</span></div>
-      </div>
-      <div class="section-block">${sectionHeading("潜在过敏原", "Potential allergens")}
-        <section class="make-allergen-notice" aria-label="${T("制作前过敏原提醒", "Allergen reminder before preparing")}">
-          <div class="make-allergen-notice-heading"><span class="make-allergen-notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m10.3 4-7.8 13.5A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.5L13.7 4a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 3h.01"/></svg></span><span>${T("制作前请留意", "Before you prepare")}</span></div>
+      ${stepper(1, MAKING_STEPS.length, true)}
+      ${makingRecipeRow(recipe)}
+      <div class="section-block">
+        <section class="make-allergen-notice" aria-labelledby="making-allergen-title">
+          <h2 class="make-allergen-notice-heading" id="making-allergen-title"><span class="make-allergen-notice-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m10.3 4-7.8 13.5A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.5L13.7 4a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4m0 3h.01"/></svg></span><span>${T("潜在过敏原", "Potential allergens")}</span></h2>
           <div class="make-allergen-notice-tags">${recipe.allergens.length ? recipeAllergenLabel(recipe).split(" · ").map((label) => `<span>${escapeHtml(label)}</span>`).join("") : `<p>${T("配方未列出常见过敏原", "No common allergens listed in this recipe")}</p>`}</div>
-          <p class="make-allergen-notice-copy">${T("请核对实际食材包装、品牌配方及交叉接触信息。", "Check actual ingredient labels, brand recipes, and cross-contact information.")}</p>
-          <p class="make-allergen-notice-footnote">${T("仅作风险提示，不代表食谱适合所有人。", "A risk notice only; this does not mean the recipe is suitable for everyone.")}</p>
+          <p class="make-allergen-notice-copy">${T("请核对所用食材的包装、配方和交叉接触提示，确认是否适合食用。", "Check ingredient labels, recipes and cross-contact warnings to determine suitability.")}</p>
         </section>
-      </div>`,
+      </div>
+      ${recipeMakingSteps()}`,
   });
+}
+
+function invalidCustomPortion() {
+  return state.customMakingPortion && state.customPortionDraft !== null && !parseMakingPortion(state.customPortionDraft);
+}
+
+function makingPortionPicker() {
+  return `<div class="section-block">
+    ${sectionHeading("制作份量（一杯=500ml）", "Batch size (1 cup = 500 mL)")}
+    <div class="portion-selector making-portion-selector" role="group" aria-label="${T("制作份量", "Batch size")}">
+      ${MAKING_PORTIONS.map((value) => `<button type="button" class="${!state.customMakingPortion && state.makingPortion === value ? "is-selected" : ""}" data-action="making-portion" data-value="${value}" aria-pressed="${!state.customMakingPortion && state.makingPortion === value}">${value} mL</button>`).join("")}
+      <button type="button" class="${state.customMakingPortion ? "is-selected" : ""}" data-action="making-portion" data-value="custom" aria-pressed="${state.customMakingPortion}" aria-expanded="${state.customMakingPortion}">${T("自定义", "Custom")}</button>
+    </div>
+    ${state.customMakingPortion ? `<div class="card field custom-making-portion">
+      <label for="custom-making-portion-input">${T("自定义份量", "Custom batch size")}</label>
+      <div class="custom-portion-input-row">
+        <input id="custom-making-portion-input" type="text" inputmode="numeric" autocomplete="off" value="${escapeHtml(state.customPortionDraft ?? state.makingPortion)}" aria-describedby="custom-portion-unit custom-portion-error" aria-invalid="${invalidCustomPortion()}" />
+        <span id="custom-portion-unit">mL</span>
+      </div>
+      <p id="custom-portion-error" class="custom-portion-error" aria-live="polite" ${invalidCustomPortion() ? "" : "hidden"}>${T("请输入大于 0 的整数毫升数。", "Enter a whole number of milliliters greater than 0.")}</p>
+    </div>` : ""}
+  </div>`;
+}
+
+function canReuseCupForMaking(status) {
+  return ["available", "ready", "awaiting-result"].includes(status);
+}
+
+function makingCupPicker() {
+  const canReuse = (id) => canReuseCupForMaking(getCupRuntime(id).status);
+  const ids = Object.keys(CUP_DEFINITIONS).sort((a, b) => Number(canReuse(b)) - Number(canReuse(a)));
+  const recommended = Math.ceil(Number(state.makingPortion) / 500);
+  const selected = state.makingCupIds.length;
+  const selection = T(`已选择 ${selected} 个杯子`, `${selected} ${selected === 1 ? "cup" : "cups"} selected`);
+  const recommendation = selected !== recommended ? T(` · 建议 ${recommended} 个`, ` · ${recommended} recommended`) : "";
+  return `<div class="cup-selector">${ids.map((id) => {
+    const cup = getCupProfile(id);
+    const active = state.makingCupIds.includes(id);
+    return `<button type="button" class="${active ? "is-selected" : ""}" data-action="making-cup" data-value="${id}" aria-pressed="${active}"><span class="cup-selector-dot" style="--cup-color:${cup.color}"></span><strong>${escapeHtml(cup.name)}</strong>${cupStatusPill(id)}</button>`;
+  }).join("")}</div>${selected ? `<p class="selection-note" aria-live="polite">${selection}${recommendation}</p>` : ""}`;
 }
 
 function renderMakePortion() {
   const recipe = getRecipe(state.batchRecipeIndex);
-  const selectedCup = getCupProfile(state.cup);
-  const cupOptions = Object.keys(CUP_DEFINITIONS).map((id) => {
-    const cup = getCupProfile(id);
-    return `<button type="button" class="${state.cup === id ? "is-selected" : ""}" data-action="select-cup" data-value="${id}" aria-pressed="${state.cup === id}"><span class="cup-selector-dot" style="--cup-color:${cup.color}"></span><strong>${cup.cupId}</strong><small>${T(cup.colorLabelZh, cup.colorLabelEn)} · ${T(cup.stateZh, cup.stateEn)}</small></button>`;
-  }).join("");
   return mobilePage({
-    titleZh: "制作冰淇淋", titleEn: "Make ice cream", back: "make-recipe", pageClass: "make-flow-page",
-    footerActions: `${button("上一步", "Previous", "make-recipe", "secondary")}${button("下一步", "Next", "freeze-confirm", "primary", false, 'data-transition="create-batch"')}`,
+    ...MAKING_PAGE_TITLE, back: "make-recipe", pageClass: "make-flow-page",
+    footerActions: `${button("上一步", "Previous", "make-recipe", "secondary")}${button("确认冷冻", "Confirm freezing", "", "primary", false, `data-action="confirm-freeze-batch" ${invalidCustomPortion() ? "disabled" : ""}`)}`,
     footerClass: "flow-actions",
-    body: `${stepper(2, 4, false, true)}
-      <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 2 步", "Step 2")}</p><h2>${T("确认份量与杯子", "Confirm portion & cup")}</h2></div><p>${escapeHtml(T(recipe.zh, recipe.en))}</p></div>
-      <div class="section-block">${sectionHeading("制作份量（ml）", "Portion (ml)")}<div class="portion-selector">${["50", "100", "250", "500"].map((value) => `<button type="button" class="${state.portion === value ? "is-selected" : ""}" data-action="select-portion" data-value="${value}" aria-pressed="${state.portion === value}">${value}</button>`).join("")}</div></div>
-      <div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad" data-recipe-ingredients aria-live="polite">${recipeIngredientRows(getRecipeIngredients(state.portion, state.batchRecipeIndex))}</div></div>
-      ${recipeCalorieSection(recipe.index)}
-      <div class="section-block">${sectionHeading("使用杯子", "Cup")}<div class="card card-pad"><div class="cup-selector">${cupOptions}</div><p class="selection-note">${T(`已选择 ${selectedCup.cupId}。APP 状态仅供参考，请以手中的实体杯为准；确认后会更新该杯的当前任务。`, `${selectedCup.cupId} selected. App status is for reference only; use the physical cup in hand. Confirming updates this cup's current task.`)}</p></div></div>`,
+    body: `${stepper(2, MAKING_STEPS.length, true)}
+      ${makingPortionPicker()}
+      <div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad" data-recipe-ingredients aria-live="polite">${recipeIngredientRows(getRecipeIngredients(state.makingPortion, recipe.index))}</div></div>
+      <div class="section-block">${renderPrepGuide(recipe)}</div>
+      <div class="section-block">${sectionHeading("关联杯子（选填）", "Link cups (optional)")}<div class="card card-pad" data-making-cup-picker>${makingCupPicker()}</div></div>`,
   });
 }
 
-function renderMvpBatchPlan() {
-  const ratio = Number(state.portion) / 250;
-  const memberName = state.member === "mia" ? "Mia" : state.member === "hui" ? "Lucky" : T("家庭分享", "Family sharing");
-  const ingredients = [
-    ["草莓", "Strawberries", `${Math.round(175 * ratio)} g`],
-    ["原味酸奶", "Plain yogurt", `${Math.round(125 * ratio)} g`],
-    ["香蕉", "Banana", `${Math.round(75 * ratio)} g`],
-  ];
-  return mobilePage({
-    titleZh: "确认制作信息",
-    titleEn: "Confirm batch",
-    captionZh: "步骤 1/3",
-    captionEn: "Step 1/3",
-    back: "make-recipe",
-    body: `
-      ${stepper(1, 3)}
-      ${pageIntro("创建批次", "Create batch", "一次确认必要信息", "Confirm the essentials", "MVP 只保留成员、份量、杯子和食材用量四项。", "The MVP keeps only the member, portion, cup, and ingredient amounts.")}
-      <div class="section-block">${sectionHeading("食用成员", "Member")}
-        <div class="chip-row" style="margin:0;padding:0">
-          <button class="chip ${state.member === "mia" ? "is-selected" : ""}" data-action="select-member" data-value="mia">Mia</button>
-          <button class="chip ${state.member === "hui" ? "is-selected" : ""}" data-action="select-member" data-value="hui">Lucky</button>
-          <button class="chip ${state.member === "family" ? "is-selected" : ""}" data-action="select-member" data-value="family">${T("家庭分享", "Family")}</button>
-        </div>
-      </div>
-      <div class="section-block">${sectionHeading("制作份量", "Portion")}
-        <div class="portion-selector">${["50", "100", "250", "500"].map((value) => `<button type="button" class="${state.portion === value ? "is-selected" : ""}" data-action="select-portion" data-value="${value}">${value}</button>`).join("")}</div>
-      </div>
-      <div class="section-block">${sectionHeading("批次确认", "Batch summary")}
-        <div class="card card-pad stack compact">
-          ${listRow("食谱", "Recipe", "草莓酸奶冰淇淋", "Strawberry yogurt ice cream", "", "")}
-          ${listRow("成员", "Member", memberName, memberName, "", state.member === "mia" ? statusPill("核对过敏原", "Review allergen", "warning") : statusPill("已确认", "Confirmed", "success"))}
-          ${listRow("杯子", "Cup", "CUP 3 · 雾紫 · 空闲", "CUP 3 · Mist purple · Available", "", statusPill("可使用", "Available", "success"))}
-        </div>
-      </div>
-      <div class="section-block">${sectionHeading("食材用量", "Ingredients")}
-        <div class="card card-pad">${ingredients.map(([zh, en, amount]) => `<div class="ingredient-row"><span>${T(zh, en)}</span><span>${amount}</span></div>`).join("")}</div>
-      </div>
-      ${state.member === "mia" ? `<div class="alert warning"><strong>${T("Mia 档案记录花生过敏", "Mia's profile lists a peanut allergy")}</strong>${T("当前配方不含花生，但仍需核对食材包装的交叉接触信息。", "The recipe contains no peanut ingredient, but packaging cross-contact information must still be checked.")}</div>` : ""}
-      <div class="sticky-actions">${button("确认并开始备料", "Confirm and start prep", "freeze-confirm", "primary", true)}</div>`,
-  });
+function guideSectionHeading(titleZh, titleEn) {
+  return `<summary class="section-heading"><span class="guide-section-title">${T(titleZh, titleEn)}</span><span class="tutorial-toggle"><b class="tutorial-expand">${T("展开", "Expand")}</b><b class="tutorial-collapse">${T("收起", "Collapse")}</b></span></summary>`;
 }
 
-function renderMvpPrepFreeze() {
-  const cup = getCupProfile(state.cup);
-  const runtime = cup.runtime;
-  const frozen = ["freezing", "ready", "awaiting-result"].includes(runtime.status);
-  const ready = ["ready", "awaiting-result"].includes(runtime.status);
-  const frozenAt = runtime.frozenAt || formatDateTimeInput(new Date());
-  const tutorialOpen = !ready && showMakingTutorialByDefault();
-  return mobilePage({
-    titleZh: "准备食材并冷冻", titleEn: "Prepare & freeze ingredients", captionZh: ready ? "步骤 3–4/4" : "步骤 3/4", captionEn: ready ? "Steps 3–4/4" : "Step 3/4", back: "icecream",
-    pageClass: "make-flow-page",
-    footerActions: frozen
-      ? `${ready ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance" data-freeze-default-action') : button("返回详情页", "Back to details", "icecream", "primary", true, 'data-freeze-default-action')}<div data-freeze-time-save hidden>${button("保存入冻时间", "Save freezer time", "", "primary", true, 'data-action="start-freeze-countdown"')}</div>`
-      : `${button("上一步", "Previous", "", "secondary", false, 'data-action="flow-step" data-value="2"')}${button("开始倒计时", "Start countdown", "", "primary", false, 'data-action="start-freeze-countdown"')}`,
-    footerClass: frozen ? "" : "flow-actions",
-    body: `${stepper(ready ? 4 : 3, 4, false, true)}<div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 3 步", "Step 3")}</p><h2>${T("准备食材并冷冻", "Prepare & freeze ingredients")}</h2></div><p>${T(runtime.recipeZh || "混合食材、装杯并水平冷冻。", runtime.recipeEn || "Mix, fill, and freeze level.")}</p></div>
-      <details class="tutorial-disclosure" ${tutorialOpen ? "open" : ""}>
-        <summary><span>${T("备料与冷冻教程", "Prep & freezing tutorial")}</span><small>${T(tutorialOpen ? "前 3 次制作默认展开" : "按需展开步骤", tutorialOpen ? "Expanded for the first 3 batches" : "Expand when needed")}</small><span class="tutorial-toggle"><b class="tutorial-expand">${T("展开", "Expand")}</b><b class="tutorial-collapse">${T("收起", "Collapse")}</b></span></summary>
-        <div class="card machine-guide-card prep-guide-card" style="--guide-cup-color:${cup.color}">
-        <div class="prep-guide-summary row-between"><strong>${cup.cupId} · ${runtime.portion || state.portion} mL</strong>${statusPill(cup.stateZh, cup.stateEn, cup.tone)}</div>
+function renderPrepGuide(recipe, { open = true } = {}) {
+  return `      <details class="guide-disclosure" data-prep-guide${open ? " open" : ""}>
+        ${guideSectionHeading("备料步骤", "Preparation steps")}
+        <div class="card machine-guide-card prep-guide-card">
         <article class="machine-guide-step">
           <div class="machine-guide-visual prep-guide-visual" aria-hidden="true"><span class="machine-guide-number">1</span><svg viewBox="0 0 74 68" fill="none"><path d="M20 32h38c-1 16-8 23-19 23S22 48 20 32Z" fill="var(--colors-family-soft-strong)" stroke="var(--colors-brands-family-700)" stroke-width="1.5"/><path d="m48 15-10 24M29 22l3 4m17-2 3-3M23 17l3 2" stroke="var(--colors-brands-family-700)" stroke-width="3" stroke-linecap="round"/><path d="M27 42c7 5 17 5 24 0" stroke="var(--colors-brands-family-400)" stroke-width="1.5" stroke-linecap="round"/></svg></div>
-          <div class="machine-guide-copy"><h3>${T("混合食材", "Blend ingredients")}</h3><p>${T("按食材用量准备，将所有食材混合均匀", "Measure the ingredients and blend until evenly mixed")}</p></div>
+          <div class="machine-guide-copy"><h3>${T("混合食材", "Blend ingredients")}</h3><p>${recipe ? T(...recipe.prepSummary) : T("按本次食谱混合食材。", "Blend the ingredients according to the recipe used for this batch.")}</p></div>
         </article>
         <article class="machine-guide-step">
-          <div class="machine-guide-visual prep-guide-visual" aria-hidden="true"><span class="machine-guide-number">2</span><span class="guide-cup-body"><span>${cup.cupId.replace("CUP ", "")}</span></span><span class="prep-fill-line"></span><span class="prep-fill-label">MAX</span></div>
-          <div class="machine-guide-copy"><h3>${T(`装入 ${cup.cupId}`, `Fill ${cup.cupId}`)}</h3><p>${T("倒入混合食材，勿超过杯体 MAX FILL 线", "Pour in the mixture without exceeding the MAX FILL line")}</p></div>
+          <div class="machine-guide-visual prep-guide-visual" aria-hidden="true"><span class="machine-guide-number">2</span><span class="guide-cup-body"></span><span class="prep-fill-line"></span><span class="prep-fill-label">MAX</span></div>
+          <div class="machine-guide-copy"><h3>${T("装入杯中", "Fill the cups")}</h3><p>${T("按需要分装，每只杯都不得超过 MAX FILL 线", "Divide the mixture as needed and keep each cup below its MAX FILL line")}</p></div>
         </article>
         <article class="machine-guide-step">
-          <div class="machine-guide-visual prep-guide-visual" aria-hidden="true"><span class="machine-guide-number">3</span><span class="guide-cup-lid"></span><span class="guide-cup-body"><span>${cup.cupId.replace("CUP ", "")}</span></span><svg class="prep-snowflake" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M8 4l4 4 4-4M8 20l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="machine-guide-visual prep-guide-visual" aria-hidden="true"><span class="machine-guide-number">3</span><span class="guide-cup-lid"></span><span class="guide-cup-body"></span><svg class="prep-snowflake" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M8 4l4 4 4-4M8 20l4-4 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
           <div class="machine-guide-copy"><h3>${T("盖好杯盖，水平入冻", "Seal and freeze level")}</h3><p>${T("盖好储存杯盖，水平冷冻至少 24 小时", "Secure the storage lid and freeze level for at least 24 hours")}</p></div>
         </article>
+        <div class="machine-guide-footer">
+          <button type="button" class="tutorial-guide-link" data-action="open-support-guide" data-value="7">${T("查看完整设备教程", "View full device guide")}</button>
         </div>
-        <button type="button" class="tutorial-guide-link" data-action="open-support-guide" data-value="7">${T("查看完整设备教程", "View full device guide")}</button>
-      </details>
-      <div class="section-block">${sectionHeading("记录入冻时间", "Record freezer time")}<div class="card card-pad"><div class="field"><label for="freeze-start">${T("实际放入冷冻室的时间", "When the cup entered the freezer")}</label><input id="freeze-start" type="datetime-local" value="${frozenAt}" max="${formatDateTimeInput(new Date())}" /></div><p class="readable-copy">${T("至少冷冻 24 小时，之后仍需确认食材完全冻实。", "Freeze for at least 24 hours, then confirm the mixture is fully frozen.")}</p></div></div>
-      ${frozen ? renderFreezeCountdownContent(false) : ""}
-      ${ready ? `<section id="machine-guide-inline" class="section-block inline-machine-guide">${renderMachineGuideContent(cup, true)}</section>` : ""}`,
-  });
+        </div>
+      </details>`;
 }
 
-function renderFreezeCountdownContent(showEditAction) {
-  const runtime = getCupRuntime();
-  const ready = ["ready", "awaiting-result"].includes(runtime.status);
-  return `<article class="card card-pad section-block"><p class="eyebrow">${T("冷冻倒计时", "Freeze countdown")}</p><h2 class="freeze-clock" data-cup-freeze-countdown="${state.cup}">${ready ? "00:00" : Number.isFinite(runtime.freezeEndsAt) ? formatCupFreezeRemaining(runtime) : "00:10"}</h2><p class="readable-copy">${T(ready ? "冷冻完成，可以开始上机制作。" : "冷冻中，倒计时结束后可以开始上机制作", ready ? "Freezing complete. You can start processing on the machine." : "Freezing. You can start processing on the machine when the countdown ends.")}</p>${!runtime.freezeDemo && !ready ? button("开始倒计时", "Start countdown", "", "secondary", true, 'data-action="demo-freeze-countdown"') : ""}</article>
-    ${ready && showEditAction ? button("查看上机操作", "View machine steps", "freeze-confirm", "primary", true) : ""}
-    ${showEditAction ? button("修改入冻时间", "Edit freezer time", "freeze-confirm", "secondary", true) : ""}`;
+function currentFreezeBatch() {
+  if (state.selectedBatchId) {
+    const selected = state.batches[state.selectedBatchId] || state.records.find((record) => record.id === state.selectedBatchId);
+    if (selected) return selected;
+  }
+  const cup = getCupProfile(state.cup);
+  const runtime = cup.runtime;
+  return state.batches[runtime.batchId] || state.records.find((record) => record.id === runtime.batchId && record.result === "freeze-ready") || {
+    ...runtime, cupName: cup.name, cupIds: [state.cup], legacyCupId: state.cup,
+  };
+}
+
+function renderFreezeBatchSummary(batch, recipe) {
+  const portion = batch.portion ? `${batch.portion} mL` : T("未记录", "Not recorded");
+  const cups = batch.cupName || T("未关联杯子", "No cups linked");
+  const ingredients = batch.ingredients?.length ? batch.ingredients
+    : batch.portion ? getRecipeIngredients(batch.portion, recipe.index) : [];
+  const details = [
+    [T("食谱", "Recipe"), T(batch.recipeZh || recipe.zh, batch.recipeEn || recipe.en)],
+    [T("制作份量", "Batch size"), portion],
+    [T("关联杯子", "Linked cups"), cups],
+  ];
+  return `<section class="section-block">
+    ${sectionHeading("本次制作", "Batch details")}
+    <div class="card card-pad">
+      ${details.map(([label, value]) => `<div class="ingredient-row batch-summary-row"><span>${label}</span><span>${escapeHtml(value)}</span></div>`).join("")}
+    </div>
+  </section>
+  ${ingredients.length ? `<section class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad">${recipeIngredientRows(ingredients)}</div></section>` : ""}`;
 }
 
 function renderMvpBatchStatus() {
-  const cup = getCupProfile(state.cup);
-  return mobilePage({titleZh: "批次状态", titleEn: "Batch status", captionZh: cup.cupId, captionEn: cup.cupId, back: "icecream", body: `${pageIntro("冷冻记录", "Freezer record", cup.runtime.recipeZh || "本次制作", cup.runtime.recipeEn || "Current batch", "时间仅供参考，以实际冻实情况为准。", "Timing is an estimate. Check the actual frozen mixture.")}${renderFreezeCountdownContent(true)}<div class="sticky-actions">${button("返回冰淇淋机详情", "Back to ice cream maker", "icecream", "secondary", true)}</div>`});
+  const batch = currentFreezeBatch();
+  const ready = ["ready", "awaiting-result"].includes(batch.status);
+  const freezing = batch.status === "freezing";
+  const freezeTime = ready
+    ? batch.endedAt || (Number.isFinite(batch.freezeEndsAt) ? new Date(batch.freezeEndsAt).toISOString() : "")
+    : batch.frozenAt;
+  const freezeTimeLabel = ready ? T("冷冻结束时间", "Freezing end time") : T("冷冻开始时间", "Freezing start time");
+  const recipeIndex = recordedRecipeIndex(batch);
+  const batchRecipe = recipeIndex >= 0 ? getRecipe(recipeIndex) : null;
+  const recipe = batchRecipe || getRecipe(state.batchRecipeIndex);
+  return mobilePage({
+    ...MAKING_PAGE_TITLE,
+    back: "icecream", pageClass: "make-flow-page freeze-status-page",
+    footerActions: button("返回设备详情", "Back to device", "icecream", "secondary", true),
+    body: `${stepper(2, MAKING_STEPS.length)}
+      <section class="section-block">
+        ${sectionHeading("冷冻进度", "Freezing progress")}
+        <article class="card card-pad batch-freeze-status">
+          ${freezeTime ? `<p class="batch-freeze-confirmed"><span>${freezeTimeLabel}</span><time datetime="${escapeHtml(freezeTime)}">${escapeHtml(formatCompactTime(freezeTime))}</time></p>` : ""}
+          ${freezing ? `<p class="freeze-status-label"><span>${T("冷冻倒计时", "Freeze countdown")}</span><span class="freeze-total-duration">${T("总时长 24 小时", "Total: 24 hours")}</span></p>` : ""}
+          ${freezing ? `<h2 class="freeze-status-title freeze-clock" ${batch.legacyCupId ? `data-cup-freeze-countdown="${batch.legacyCupId}"` : `data-batch-freeze-countdown="${batch.id}"`}>${formatCupFreezeRemaining(batch)}</h2>` : `<h2 class="freeze-status-title">${T(ready ? "可上机制作" : "尚未开始冷冻", ready ? "Ready to process" : "Freezing has not started")}</h2>`}
+          ${ready ? `<p class="freeze-status-program">${T("推荐机器程序", "Recommended program")} · <strong>${escapeHtml(batch.program || recipe.program)}</strong></p>
+            <p class="readable-copy">${T("请先确认食材完全冻实，再到机器上操作。", "Check that the mixture is fully frozen before using the machine.")}</p>` : ""}
+          ${!ready && !freezing ? button("返回备料", "Return to prep", "", "primary", true, 'data-action="resume-legacy-prep"') : ""}
+        </article>
+      </section>
+      ${freezing || ready ? `<div class="section-block freeze-guides">
+        ${ready ? renderMachineGuideContent(batch) : ""}
+        ${renderPrepGuide(batchRecipe, { open: false })}
+      </div>` : ""}
+      ${batch.recipeZh || batch.portion ? renderFreezeBatchSummary(batch, recipe) : ""}`,
+  });
 }
 
-function renderMachineGuideContent(cup, inline = false) {
-  const tutorialOpen = inline || showMakingTutorialByDefault();
+function renderMachineGuideContent(batch) {
+  const program = escapeHtml(batch.program || getRecipe(batch.recipeIndex ?? state.batchRecipeIndex).program);
   return `
-      <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T("第 4 步", "Step 4")}</p><h2>${T("在机器上完成制作", "Make it on the machine")}</h2></div><p>${T("查看操作步骤后，在机器本体完成制作；无需返回 APP 登记结果。", "Review the steps and use the machine controls. No result logging in the app is needed.")}</p></div>
-      <details class="tutorial-disclosure" ${tutorialOpen ? "open" : ""}>
-        <summary><span>${T("上机操作教程", "Machine operation tutorial")}</span><small>${T(inline ? "上机步骤已展开" : tutorialOpen ? "前 3 次制作默认展开" : "按需展开步骤", inline ? "Machine steps expanded" : tutorialOpen ? "Expanded for the first 3 batches" : "Expand when needed")}</small><span class="tutorial-toggle"><b class="tutorial-expand">${T("展开", "Expand")}</b><b class="tutorial-collapse">${T("收起", "Collapse")}</b></span></summary>
+      <details class="guide-disclosure" open>
+        ${guideSectionHeading("上机指引", "Machine guide")}
         <div class="card machine-guide-card">
         <article class="machine-guide-step">
-          <div class="machine-guide-visual guide-cup-visual" style="--guide-cup-color:${cup.color}" aria-hidden="true">
+          <div class="machine-guide-visual guide-cup-visual" aria-hidden="true">
             <span class="machine-guide-number">1</span>
             <span class="guide-cup-lid"></span>
-            <span class="guide-cup-body"><span>${cup.cupId.replace("CUP ", "")}</span></span>
+            <span class="guide-cup-body"></span>
             <span class="guide-check-mark">✓</span>
           </div>
           <div class="machine-guide-copy">
-            <h3>${T(`取出并核对 ${cup.cupId}`, `Take and verify ${cup.cupId}`)}</h3>
+            <h3>${T("取出并检查冻实情况", "Remove the cup and check it is fully frozen")}</h3>
             <p>${T("杯体保持水平，移除储存杯盖", "Keep the cup level and remove the storage lid")}</p>
             ${statusPill("人工核对", "Manual check", "info")}
           </div>
@@ -1946,81 +2178,138 @@ function renderMachineGuideContent(cup, inline = false) {
         <article class="machine-guide-step">
           <div class="machine-guide-visual guide-panel-visual" aria-hidden="true">
             <span class="machine-guide-number">3</span>
-            <span class="guide-panel-screen"><b>ICE<br />CREAM</b><i></i></span>
+            <span class="guide-panel-screen"><b>${program}</b><i></i></span>
             <span class="guide-start-mark">▶</span>
           </div>
           <div class="machine-guide-copy">
             <h3>${T("在面板选择程序并启动", "Select the program and start")}</h3>
-            <p>${cup.runtime.program || getRecipe(cup.runtime.recipeIndex ?? state.batchRecipeIndex).program} · ${cup.runtime.portion || state.portion} mL</p>
+            <p>${program}</p>
             ${statusPill("机器按键启动", "Press machine button", "success")}
           </div>
         </article>
+        <div class="machine-guide-footer">
+          <p class="readable-copy">${T("确认安装到位后，请在机器面板按键启动。", "Confirm assembly, then start using the controls on the machine.")}</p>
+          <button type="button" class="tutorial-guide-link" data-action="open-support-guide" data-value="7">${T("查看完整设备教程", "View full device guide")}</button>
         </div>
-        <button type="button" class="tutorial-guide-link" data-action="open-support-guide" data-value="7">${T("查看完整设备教程", "View full device guide")}</button>
-      </details>
-      <div class="alert warning section-block"><strong>${T("APP 不能远程启动", "The app cannot start the machine remotely")}</strong>${T("请在确认安装正确后，在机器本体按键启动。", "After confirming assembly, start the program using the controls on the machine.")}</div>`;
+        </div>
+      </details>`;
 }
 
-function renderMvpMachineGuide() {
-  const cup = getCupProfile(state.cup);
-  const canEndGuidance = ["ready", "awaiting-result"].includes(cup.runtime.status);
-  return mobilePage({
-    titleZh: "上机操作指引",
-    titleEn: "Machine operation guide",
-    captionZh: "步骤 4/4",
-    captionEn: "Step 4/4",
-    back: "icecream",
-    pageClass: "make-flow-page",
-    footerActions: canEndGuidance ? button("完成制作", "Finish making", "", "primary", true, 'data-action="finish-guidance"') : button("返回详情页", "Back to details", "icecream", "primary", true),
-    body: `${stepper(4, 4, false, true)}${renderMachineGuideContent(cup)}`,
-  });
-}
-
-function scrollToInlineMachineGuide() {
-  const scroll = app.querySelector(".mobile-scroll");
-  const guide = app.querySelector("#machine-guide-inline");
-  if (!scroll || !guide) return;
-  const top = guide.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop - 10;
-  scroll.scrollTo({ top, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+function groupedRecordHistory(records, counts, fewestFirst) {
+  const groups = new Map();
+  for (const record of records) {
+    const key = recordRecipeKey(record);
+    const group = groups.get(key) || [];
+    group.push(record);
+    groups.set(key, group);
+  }
+  return [...groups.entries()]
+    .sort(([keyA, listA], [keyB, listB]) => {
+      const difference = (counts.get(keyA) || 0) - (counts.get(keyB) || 0);
+      return (fewestFirst ? difference : -difference) || recordMakingTime(listB[0]) - recordMakingTime(listA[0]);
+    })
+    .map(([key, list]) => {
+      const recent = list[0];
+      const name = T(recent.recipeZh, recent.recipeEn) || T("未命名食谱", "Unnamed recipe");
+      const count = counts.get(key);
+      const recentTime = `${T("最近冷冻结束：", "Last freeze ended: ")}${formatCompactTime(recent.endedAt)}`;
+      const groupKey = escapeHtml(String(key));
+      return `<details class="card record-recipe-group" data-record-recipe-group="${groupKey}" ${state.expandedRecordRecipes.has(String(key)) ? "open" : ""}>
+        <summary class="record-recipe-heading">
+          ${recordThumbnail(recent)}
+          <span class="record-history-copy"><strong>${escapeHtml(name)}</strong><small>${escapeHtml(recentTime)}</small></span>
+          <span class="mini-badge">${T(`已制作 ${count} 次`, `Made ${count} times`)}</span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </summary>
+        <div class="record-recipe-entries">
+          <p class="record-recipe-time-label">${T("冷冻开始时间", "Freezing start time")}</p>
+          ${list.map((record) => `<button type="button" class="record-recipe-entry" data-route="record-detail" data-record-id="${escapeHtml(record.id)}">
+            <span class="record-history-copy"><strong><time title="${escapeHtml(recordDisplayTime(record.frozenAt))}">${escapeHtml(formatCompactTime(record.frozenAt))}</time></strong><small>${escapeHtml(recordCupName(record))}</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </button>`).join("")}
+        </div>
+      </details>`;
+    }).join("");
 }
 
 function renderRecords() {
+  const byRecipe = state.recordHistoryView === "recipe";
+  const oldestFirst = !byRecipe && state.recordHistoryOrder === "oldest";
+  const fewestFirst = state.recordRecipeOrder === "fewest";
+  const ascending = byRecipe ? fewestFirst : oldestFirst;
+  const sortLabel = byRecipe
+    ? ascending ? T("次数升序", "Count ascending") : T("次数降序", "Count descending")
+    : ascending ? T("时间升序", "Time ascending") : T("时间降序", "Time descending");
+  const sortDirection = byRecipe
+    ? ascending ? T("从少到多", "fewest to most") : T("从多到少", "most to fewest")
+    : ascending ? T("从旧到新", "oldest to newest") : T("从新到旧", "newest to oldest");
+  const reverseOrder = ascending ? T("点击切换为降序。", "Switch to descending.") : T("点击切换为升序。", "Switch to ascending.");
+  const records = visibleMakingHistory().sort((a, b) => {
+    const timeA = recordMakingTime(a);
+    const timeB = recordMakingTime(b);
+    if (!timeA || !timeB) return Number(!timeA) - Number(!timeB);
+    return oldestFirst ? timeA - timeB : timeB - timeA;
+  });
+  const counts = preparedRecipeCounts(records);
+  const content = byRecipe ? groupedRecordHistory(records, counts, fewestFirst) : records.map((record) => recordListCard(record, counts)).join("");
+  const empty = `<div class="card empty-state"><h3>${byRecipe ? T("还没有制作过的食谱", "No recipes made yet") : T("还没有制作记录", "No making records yet")}</h3><p>${T("冷冻到时后，可在这里回看批次记录。", "After the countdown ends, revisit the batch record here.")}</p></div>`;
   return mobilePage({
     pageClass: "icecream-overview records-page",
     titleZh: "制作记录", titleEn: "Making records", back: "icecream",
-    body: `<p class="result-summary">${T("保留已查看的操作指引与旧制作记录，不推断机器完成状态。", "Keep viewed guides and older making records without inferring machine completion.")}</p>
-      <div class="stack">${state.records.length ? state.records.map(recordListCard).join("") : `<div class="card empty-state"><h3>${T("还没有制作记录", "No making records yet")}</h3><p>${T("结束上机引导后，可在这里回看食谱与杯子信息。", "After finishing the guide, revisit the recipe and cup details here.")}</p></div>`}</div>`,
+    body: `
+      <dl class="card record-history-totals" aria-label="${T("制作汇总", "Making summary")}">
+        <div><dt>${T("累计制作", "Total batches made")}</dt><dd>${records.length}<span>${T("次", "")}</span></dd></div>
+        <div><dt>${T("制作过的食谱", "Recipes made")}</dt><dd>${counts.size}<span>${T("种", "")}</span></dd></div>
+      </dl>
+      <p class="result-summary">${T("冷冻到时自动计为制作完成，同一批分装到多杯只计一次。", "A batch counts as made when the freezer timer ends, even if it is split across multiple cups.")}</p>
+      <div class="portion-selector record-history-views" role="group" aria-label="${T("制作记录视图", "Making record view")}">
+        ${[["time", "按时间", "By time"], ["recipe", "按食谱", "By recipe"]].map(([id, zh, en]) => {
+          const selected = state.recordHistoryView === id;
+          return `<button type="button" class="${selected ? "is-selected" : ""}" data-action="record-history-view" data-value="${id}" aria-pressed="${selected}">${T(zh, en)}</button>`;
+        }).join("")}
+      </div>
+      <div class="record-history-sort">
+        <button type="button" class="chip" data-action="record-history-order" aria-label="${T(`${sortLabel}，${sortDirection}。${reverseOrder}`, `${sortLabel}, ${sortDirection}. ${reverseOrder}`)}">
+          ${sortLabel}
+          <span class="record-order-arrow" aria-hidden="true">${ascending ? "↑" : "↓"}</span>
+        </button>
+      </div>
+      <div class="stack">${content || empty}</div>`,
   });
 }
 
 function renderRecordDetail() {
-  const record = state.records.find((item) => item.id === state.recordId) || state.records[0];
-  if (!record) return mobilePage({titleZh: "制作记录", titleEn: "Making records", back: "records", body: `<div class="empty-state card">${T("暂无制作记录", "No making records")}</div>`});
-  const current = state.recordStep || 1;
-  const stages = [["选择食谱", "Choose recipe"], ["确认份量与杯子", "Confirm portion & cup"], ["准备食材并冷冻", "Prepare & freeze ingredients"], [record.result === "guidance-viewed" ? "上机操作指引" : "上机制作与历史结果", record.result === "guidance-viewed" ? "Machine operation guide" : "Machine use & legacy result"]];
-  const [titleZh, titleEn] = stages[current - 1];
-  const resultZh = {complete: "已完成", incomplete: "未完成", cancelled: "已取消"}[record.result] || "已保存";
-  const resultEn = {complete: "Completed", incomplete: "Not completed", cancelled: "Cancelled"}[record.result] || "Saved";
-  const ingredients = `<div class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad">${recipeIngredientRows(record.ingredients || getRecipeIngredients(record.portion, record.recipeIndex))}</div></div>`;
-  const content = current === 1 ? `
-    <div class="section-block">${sectionHeading("食谱", "Recipe")}<div class="card card-pad">${listRow(record.recipeZh, record.recipeEn, recordMakingMeta(record), recordMakingMeta(record), "", "", "", recordThumbnail(record))}</div></div>
-    ${record.member ? `<div class="section-block">${sectionHeading("历史成员记录", "Historical member record")}<div class="card card-pad record-batch-summary">${listRow("食用成员", "Member", record.member, record.member === "家庭分享" ? "Family" : record.member, "", "")}</div></div>` : ""}` : current === 2 ? `
-    <div class="section-block">${sectionHeading("制作份量", "Portion")}<div class="card card-pad">${listRow("制作份量", "Portion", `${record.portion} mL`, `${record.portion} mL`, "", "")}</div></div>
-    ${ingredients}
-    <div class="section-block">${sectionHeading("使用杯子", "Cup")}<div class="card card-pad">${listRow("使用杯子", "Cup", record.cupName || record.cupId, record.cupName || record.cupId, "", "")}</div></div>` : current === 3 ? `
-    <article class="card card-pad"><h3>${T("混合食材 → 装杯 → 水平入冻", "Mix → fill → freeze level")}</h3><p class="readable-copy">${T(record.recipeZh, record.recipeEn)}</p></article>
-    ${ingredients}<div class="section-block">${sectionHeading("记录入冻时间", "Record freezer time")}<div class="card card-pad">${listRow("实际放入冷冻室的时间", "When the cup entered the freezer", record.frozenAt ? formatExpiry(record.frozenAt) : "旧批次未保存入冻时间", record.frozenAt ? formatExpiry(record.frozenAt) : "Freezer time unavailable for this legacy batch", "", "")}<p class="readable-copy">${T("至少冷冻 24 小时，之后仍需确认食材完全冻实。", "Freeze for at least 24 hours, then confirm the mixture is fully frozen.")}</p></div></div>` : `
-    <div class="section-block">${sectionHeading("本机程序", "Machine program")}<div class="card card-pad">${listRow("程序", "Program", record.program || getRecipe(record.recipeIndex).program, record.program || getRecipe(record.recipeIndex).program, "", "")}</div></div>
-    ${record.result === "guidance-viewed"
-      ? `<div class="alert info section-block"><strong>${T("已查看操作指引", "Machine guide viewed")}</strong>${T("仅记录查看指引，不代表机器已启动或成品已完成。", "This records guide viewing only, not that the machine started or the dessert was made.")}</div>`
-      : `<div class="section-block">${sectionHeading("历史批次信息", "Legacy batch details")}<div class="card card-pad">${listRow("保存状态", "Saved status", resultZh, resultEn, "", "")}${listRow("留档日期", "Saved date", formatExpiry(recordMakingTime(record)), formatExpiry(recordMakingTime(record)), "", "")}${record.remaining ? listRow("历史余量", "Historical remaining", `${record.remaining} mL`, `${record.remaining} mL`, "", "") : ""}</div></div>`}`;
+  const history = visibleMakingHistory();
+  const record = state.recordId ? history.find((item) => item.id === state.recordId) : history[0];
+  if (!record) return mobilePage({titleZh: "制作记录详情", titleEn: "Record details", back: "records", body: `<div class="empty-state card">${T("暂无制作记录", "No making records")}</div>`});
+
+  const recipeIndex = recordedRecipeIndex(record);
+  const recipe = recipeIndex >= 0 ? getRecipe(recipeIndex) : null;
+  const name = T(record.recipeZh || recipe?.zh || "未记录食谱", record.recipeEn || recipe?.en || "Recipe not recorded");
+  const portion = parseMakingPortion(record.portion);
+  const details = [
+    [T("制作份量", "Batch size"), portion ? `${portion} mL` : T("未记录", "Not recorded")],
+    [T("关联杯子", "Linked cups"), recordCupName(record)],
+    ...(record.frozenAt ? [[T("冷冻开始时间", "Freezing started"), recordDisplayTime(record.frozenAt)]] : []),
+    [T("冷冻结束时间", "Freezing ended"), recordDisplayTime(record.endedAt)],
+    ...(record.program ? [[T("推荐机器程序", "Recommended program"), record.program]] : []),
+  ];
+  const id = escapeHtml(record.id);
+  const ingredients = Array.isArray(record.ingredients) ? record.ingredients : [];
+  const remake = recipe ? button("按此食谱再做一次", "Make this recipe again", "", "primary", true, `data-action="remake-record" data-value="${id}"`) : "";
+
   return mobilePage({
-    pageClass: "icecream-overview record-flow",
-    titleZh: current === 1 ? "制作冰淇淋" : titleZh, titleEn: current === 1 ? "Make ice cream" : titleEn,
-    captionZh: current === 1 ? "" : `步骤 ${current}/4`, captionEn: current === 1 ? "" : `Step ${current}/4`, back: "records",
-    body: `${stepper(current, 4, true)}
-      <div class="page-intro"><div class="make-step-heading"><p class="eyebrow">${T(`第 ${current} 步`, `Step ${current}`)}</p><h2>${T(titleZh, titleEn)}</h2></div><p>${T("查看本次制作时保存的信息。", "Review the information saved for this batch.")}</p></div>${content}
-      <div class="sticky-actions">${current < 4 ? button("下一步", "Next", "", "primary", true, `data-action="record-step" data-value="${current + 1}"`) : `${button("按此食谱再做一次", "Make this recipe again", "", "primary", true, `data-action="remake-record" data-value="${record.id}"`)}${button("返回制作记录", "Back to records", "", "secondary", true, 'data-action="navigate-back" data-fallback="records" data-exit-record="true"')}`}</div>`,
+    pageClass: "icecream-overview record-detail-page",
+    titleZh: "制作记录详情", titleEn: "Record details", back: "records",
+    body: `<section class="card card-pad">
+      <header class="record-detail-recipe">
+        ${recordThumbnail(record)}
+        <div class="record-detail-heading"><h2>${escapeHtml(name)}</h2></div>
+      </header>
+      ${details.map(([label, value]) => `<div class="ingredient-row batch-summary-row"><span>${label}</span><span>${escapeHtml(value)}</span></div>`).join("")}
+    </section>
+    ${ingredients.length ? `<section class="section-block">${sectionHeading("食材用量", "Ingredients")}<div class="card card-pad">${recipeIngredientRows(ingredients)}</div></section>` : ""}
+    ${remake ? `<div class="section-block stack compact">${remake}</div>` : ""}`,
   });
 }
 
@@ -2044,7 +2333,7 @@ const SUPPORT_GUIDE_CONTENT = [
   ["选择食谱与制作份量，按页面换算后的用量准备食材，并将食材混合均匀。", "Choose a recipe and portion, measure the calculated ingredients, and blend evenly.", "制作前核对页面提示的潜在过敏原、实际食材包装与交叉接触信息。", "Check the potential allergen notice, actual ingredient labels, and cross-contact information before preparing."],
   ["将混合食材倒入杯中，不超过 MAX FILL 线；盖好储存杯盖，水平放入冷冻室至少 24 小时。", "Fill below MAX FILL, secure the storage lid, and freeze level for at least 24 hours.", "达到预计冷冻时长后仍需人工确认完全冻实；倾斜冷冻的混合物请按说明书处理。", "Confirm the mixture is fully frozen even after the estimated time. Follow the manual for mixtures frozen at an angle."],
   ["检查部件清洁完好，将搅拌刀和刀轴安装到搅拌杯盖，装入冷冻杯，锁紧杯盖后装入主机。", "Check the parts, fit the paddle and spindle to the processing lid, insert the frozen cup, lock the lid, and fit the assembly to the unit.", "确认所有部件安装到位后再启动。安装时保持机器停止，勿接触运动部件。", "Confirm all parts are seated before starting. Keep the unit stopped during assembly and avoid moving parts."],
-  ["按食谱选择机器程序与对应份量，确认安装正确后在实体机器面板按键启动。", "Select the recipe program and portion and start using the machine's physical controls after verifying assembly.", "App 不远程启动或读取机器进度；制作结束后观察实际成品，再记录制作结果。", "The app does not remotely start or read progress. Inspect the actual batch and then log the result."],
+  ["按食谱选择机器程序与对应份量，确认安装正确后在实体机器面板按键启动。", "Select the recipe program and portion and start using the machine's physical controls after verifying assembly.", "冷冻到时后，App 已自动保存这批制作记录。", "The app saves the batch automatically when the freezer timer ends."],
   ["机器无法启动时，先停止操作并核对杯盖、外碗与机头是否安装到位，再按说明书排查。", "If the unit will not start, stop and check the lid, outer bowl, and head against the manual.", "如有冒烟、异味、异常过热或部件损伤，请停止使用、断电并联系售后。", "For smoke, unusual odor, overheating, or damaged parts, stop use, unplug, and contact support."],
 ];
 
@@ -2119,7 +2408,7 @@ function renderInstall() {
       <div class="timeline">
         <div class="timeline-row"><h3>01 · ${T("检查刀轴与搅拌刀", "Inspect spindle and paddle")}</h3><p>${T("确认清洁、干燥、无裂纹或变形。", "Confirm they are clean, dry, and free from cracks or deformation.")}</p></div>
         <div class="timeline-row"><h3>02 · ${T("将搅拌刀装入杯盖", "Fit the paddle into the lid")}</h3><p>${T("确认刀轴卡入指定位置。", "Make sure the spindle seats in the intended position.")}</p></div>
-        <div class="timeline-row"><h3>03 · ${T("把冷冻杯放入外碗", "Place the frozen cup in the outer bowl")}</h3><p>${T("杯底平稳，编号和颜色与 APP 记录一致。", "Keep it level and match the number and color shown in the app.")}</p></div>
+        <div class="timeline-row"><h3>03 · ${T("把冷冻杯放入外碗", "Place the frozen cup in the outer bowl")}</h3><p>${T("确认是本次备料使用的杯子，并将杯底放平。", "Check that it is the cup you used for this batch and set it level.")}</p></div>
         <div class="timeline-row"><h3>04 · ${T("锁紧搅拌杯盖", "Lock the processing lid")}</h3><p>${T("沿标识方向旋转至完全到位。", "Rotate in the marked direction until fully locked.")}</p></div>
         <div class="timeline-row"><h3>05 · ${T("推入主机并锁定机头", "Insert the bowl and lock the head")}</h3><p>${T("确认结构到位后再选择程序。", "Confirm the assembly is secure before selecting a program.")}</p></div>
       </div>
@@ -2163,7 +2452,7 @@ function renderFaq() {
       ${pageIntro("由你选择机器显示", "Select what the machine shows", "机器面板显示了什么？", "What is shown on the machine panel?", "当前版本不会自动读取错误码，请按机器实际显示选择。", "This release does not read error codes automatically; choose what is actually shown.")}
       <div class="portion-selector">${options.map((code) => `<button type="button" class="${state.errorCode === code ? "is-selected" : ""}" data-action="error-code" data-value="${code}">${code}</button>`).join("")}</div>
       <article class="card card-pad section-block">
-        <div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("你选择的错误码", "Selected error code")}</p><h2 style="margin:6px 0 0;font-family:var(--font-brand);font-size:25px;font-weight:400">${state.errorCode}</h2></div>${statusPill("人工选择", "Selected by you", "info")}</div>
+        <div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("你选择的错误码", "Selected error code")}</p><h2 style="margin:6px 0 0;font:var(--type-weight-light) var(--type-heading-l-font-size)/var(--type-heading-l-line-height) var(--font-brand)">${state.errorCode}</h2></div>${statusPill("人工选择", "Selected by you", "info")}</div>
         <div class="section-block" style="margin-top:16px"><h3 style="margin:0;font-size:12px">${T("可能原因", "Possible cause")}</h3><p style="margin:5px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("外碗、杯盖或机头可能没有完全到位，安全结构尚未锁定。", "The outer bowl, lid, or machine head may not be fully seated and locked.")}</p></div>
       </article>
       <div class="section-block">${sectionHeading("处理步骤", "What to do")}
@@ -2226,7 +2515,7 @@ function renderComments() {
     back: "community",
     right: `<button class="icon-button textual" type="button" data-action="show-toast" data-message-zh="评论排序已打开" data-message-en="Comment sorting opened">${T("排序", "Sort")}</button>`,
     body: `
-      <article class="card card-pad"><div class="row-between"><div><h3 style="margin:0;font-size:12px">${T("食谱评分", "Recipe rating")}</h3><p style="margin:4px 0 0;color:var(--muted-foreground);font-size:9px">4.9 · 124 ${T("人评分", "ratings")}</p></div><strong style="font-family:var(--font-brand);font-size:30px;font-weight:400">4.9</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" style="width:92%"></div></div></article>
+      <article class="card card-pad"><div class="row-between"><div><h3 style="margin:0;font-size:12px">${T("食谱评分", "Recipe rating")}</h3><p style="margin:4px 0 0;color:var(--muted-foreground);font-size:9px">4.9 · 124 ${T("人评分", "ratings")}</p></div><strong style="font:var(--type-weight-regular) var(--type-heading-xl-font-size)/var(--type-heading-xl-line-height) var(--font-brand)">4.9</strong></div><div class="progress-track" style="margin-top:12px"><div class="progress-fill" style="width:92%"></div></div></article>
       <div class="section-block">${sectionHeading("写下你的体验", "Share your experience")}
         <div class="card card-pad"><div class="rating">${[1, 2, 3, 4, 5].map((value) => `<button type="button" class="${value <= state.rating ? "is-selected" : ""}" data-action="rating" data-value="${value}">${value}</button>`).join("")}</div><textarea aria-label="${T("评论内容", "Comment")}" placeholder="${T("口感、配方调整或制作心得…", "Texture, adjustments, or making notes…")}" style="width:100%;min-height:70px;margin-top:10px;padding:10px;border:.5px solid var(--border);border-radius:12px;color:var(--foreground);background:var(--background)"></textarea>${button("发布评论", "Post comment", "", "primary", true, `style="margin-top:10px" data-action="show-toast" data-message-zh="评论已提交审核" data-message-en="Comment submitted for review"`)}</div>
       </div>
@@ -2246,7 +2535,7 @@ function renderShareResult() {
     back: "remaining",
     body: `
       ${pageIntro("发布到社区", "Share to community", "把这次制作整理成一张成果卡", "Turn this batch into a result card", "发布前可以编辑文字，并选择是否显示成员与份量。", "Edit the text and choose whether to show the member and portion before posting.")}
-      <article class="card" style="overflow:hidden"><div class="recipe-art berry" style="height:210px"></div><div class="card-pad"><p class="eyebrow" style="color:var(--colors-brands-family-700)">MADE WITH IM01</p><h2 style="margin:6px 0 0;font-family:var(--font-brand);font-size:25px;font-weight:400">${T("草莓酸奶冰淇淋", "Strawberry yogurt ice cream")}</h2><p style="margin:7px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("第一次就做出了细腻口感，250 mL 很适合两个人分享。", "Smooth on the first try, and 250 mL was perfect for sharing.")}</p><div class="recipe-meta"><span class="mini-badge">250 mL</span><span class="mini-badge">ICE CREAM</span><span class="mini-badge">${T("已隐藏成员", "Member hidden")}</span></div></div></article>
+      <article class="card" style="overflow:hidden"><div class="recipe-art berry" style="height:210px"></div><div class="card-pad"><p class="eyebrow" style="color:var(--colors-brands-family-700)">MADE WITH IM01</p><h2 style="margin:6px 0 0;font:var(--type-weight-light) var(--type-heading-l-font-size)/var(--type-heading-l-line-height) var(--font-brand)">${T("草莓酸奶冰淇淋", "Strawberry yogurt ice cream")}</h2><p style="margin:7px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("第一次就做出了细腻口感，250 mL 很适合两个人分享。", "Smooth on the first try, and 250 mL was perfect for sharing.")}</p><div class="recipe-meta"><span class="mini-badge">250 mL</span><span class="mini-badge">ICE CREAM</span><span class="mini-badge">${T("已隐藏成员", "Member hidden")}</span></div></div></article>
       <div class="form-grid section-block"><div class="field"><label>${T("分享文字", "Caption")}</label><textarea>${T("第一次就做出了细腻口感，250 mL 很适合两个人分享。", "Smooth on the first try, and 250 mL was perfect for sharing.")}</textarea></div></div>
       <div class="card card-pad section-block stack compact">${listRow("显示制作份量", "Show portion", "250 mL", "250 mL", "", T("显示", "On"))}${listRow("显示食用成员", "Show member", "保护家庭成员隐私", "Protect household privacy", "", T("隐藏", "Off"))}${listRow("允许评论", "Allow comments", "发布后可随时关闭", "Can be disabled later", "", T("允许", "On"))}</div>
       <div class="sticky-actions">${button("发布到社区", "Post to community", "community", "primary", true, `data-action="show-toast" data-message-zh="成果已发布到社区" data-message-en="Result posted to community"`)}</div>`,
@@ -2302,7 +2591,7 @@ function renderSubmitStatus() {
     titleEn: "Submission status",
     back: "recipe-submit",
     body: `
-      <article class="card card-pad"><div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("燕麦香蕉可可冰淇淋", "Oat banana cocoa ice cream")}</p><h2 style="margin:6px 0 0;font-family:var(--font-brand);font-size:25px;font-weight:400">${T("正在结构审核", "Structure review in progress")}</h2></div>${statusPill("审核中", "In review", "info")}</div><p style="margin:12px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("预计 2–3 个工作日完成首轮审核。", "The first review is estimated to take 2–3 business days.")}</p></article>
+      <article class="card card-pad"><div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("燕麦香蕉可可冰淇淋", "Oat banana cocoa ice cream")}</p><h2 style="margin:6px 0 0;font:var(--type-weight-light) var(--type-heading-l-font-size)/var(--type-heading-l-line-height) var(--font-brand)">${T("正在结构审核", "Structure review in progress")}</h2></div>${statusPill("审核中", "In review", "info")}</div><p style="margin:12px 0 0;color:var(--muted-foreground);font-size:10px;line-height:16px">${T("预计 2–3 个工作日完成首轮审核。", "The first review is estimated to take 2–3 business days.")}</p></article>
       <div class="section-block">${sectionHeading("审核流程", "Review process")}
         <div class="timeline"><div class="timeline-row"><h3>${T("已提交", "Submitted")}</h3><p>${T("今天 20:36 · 内容已锁定为投稿版本", "Today 8:36 PM · Submission version locked")}</p></div><div class="timeline-row"><h3>${T("结构与安全审核", "Structure & safety review")}</h3><p>${T("检查用量、过敏原、适用人群与步骤完整性。", "Reviewing amounts, allergens, suitability, and step completeness.")}</p></div><div class="timeline-row"><h3>${T("试做验证", "Test-kitchen validation")}</h3><p>${T("待结构审核通过后安排。", "Scheduled after structure approval.")}</p></div><div class="timeline-row"><h3>${T("发布或修改", "Publish or revise")}</h3><p>${T("通过后标注为社区验证食谱；如需修改会说明原因。", "Approved recipes are labeled community-tested; requested changes include reasons.")}</p></div></div>
       </div>
@@ -2355,7 +2644,7 @@ function renderOrderDetail() {
     captionEn: "MC202609080126",
     back: "orders",
     body: `
-      <article class="card card-pad"><div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("配送中", "In delivery")}</p><h2 style="margin:6px 0 0;font-family:var(--font-brand);font-size:25px;font-weight:400">${T("预计 9 月 10 日送达", "Estimated delivery September 10")}</h2></div>${statusPill("运输中", "In transit", "info")}</div></article>
+      <article class="card card-pad"><div class="row-between"><div><p class="eyebrow" style="color:var(--colors-brands-family-700)">${T("配送中", "In delivery")}</p><h2 style="margin:6px 0 0;font:var(--type-weight-light) var(--type-heading-l-font-size)/var(--type-heading-l-line-height) var(--font-brand)">${T("预计 9 月 10 日送达", "Estimated delivery September 10")}</h2></div>${statusPill("运输中", "In transit", "info")}</div></article>
       <div class="section-block">${sectionHeading("物流进度", "Delivery tracking")}
         <div class="timeline"><div class="timeline-row"><h3>${T("已到达深圳转运中心", "Arrived at Shenzhen hub")}</h3><p>${T("今天 15:42", "Today 3:42 PM")}</p></div><div class="timeline-row"><h3>${T("运输中", "In transit")}</h3><p>${T("今天 05:20 · 东莞", "Today 5:20 AM · Dongguan")}</p></div><div class="timeline-row"><h3>${T("商家已发货", "Shipped")}</h3><p>${T("9 月 8 日 18:08", "Sep 8 · 6:08 PM")}</p></div></div>
       </div>
@@ -2404,7 +2693,6 @@ const renderers = {
   tasks: renderTasks,
   "task-detail": renderTaskDetail,
   cups: renderCups,
-  "cup-timer": renderCupTimer,
   "cup-detail": renderCupDetail,
   "cup-edit": renderCupEdit,
   recipes: renderRecipes,
@@ -2413,12 +2701,11 @@ const renderers = {
   "recipe-filter": renderRecipeFilter,
   "recipe-detail": renderRecipeDetail,
   favorites: renderFavorites,
+  "prepared-recipes": renderPreparedRecipes,
   recent: renderRecent,
   "make-recipe": renderMvpChooseRecipe,
   "make-portion": renderMakePortion,
-  "freeze-confirm": renderMvpPrepFreeze,
   "freeze-countdown": renderMvpBatchStatus,
-  "machine-program": renderMvpMachineGuide,
   records: renderRecords,
   "record-detail": renderRecordDetail,
   support: renderSupport,
@@ -2477,40 +2764,36 @@ function renderLogicPanel() {
     ["空闲", "Available", "可创建新批次", "A new batch can be created"],
     ["备料中", "Preparing", "已确认食谱、份量和杯子，尚未入冻", "Recipe, portion, and cup confirmed; not frozen yet"],
     ["冷冻中", "Freezing", "用户确认入冻后开始 24 小时倒计时", "A 24-hour countdown starts after the user confirms freezing"],
-    ["预计可制作", "Estimated ready", "倒计时结束，可进入机器操作", "Countdown finished; machine operation can begin"],
+    ["可上机制作", "Ready to process", "冷冻计时结束，先确认冻实，再查看上机指引", "Freezing time elapsed; check the mixture is frozen before using the guide"],
     ["旧批次", "Legacy batch", "旧版制作与余量状态只读保留", "Older result and leftover states remain readable"],
   ];
   const cupTransitions = [
     ["新增制作并点击下一步：空闲 → 备料中", "Start a batch and tap Next: Available → Preparing"],
-    ["确认已入冻：备料中 → 冷冻中 → 预计可制作", "Confirm freezing: Preparing → Freezing → Estimated ready"],
-    ["查看上机指引：预计可制作状态不变", "View machine guide: Estimated ready remains unchanged"],
-    ["结束引导：只保存查看记录并释放 APP 内的任务占位", "Finish guide: save only a guide-viewed record and release the app task"],
+    ["确认冷冻：备料中 → 冷冻中 → 可上机制作", "Confirm freezing: Preparing → Freezing → Estimated ready"],
+    ["查看上机指引：可上机制作状态不变", "View machine guide: Estimated ready remains unchanged"],
+    ["冷冻到时自动计为制作完成，同批多杯只计一次", "Count the batch as made when the freezer timer ends, once per batch"],
   ];
   const detailedLogic = {
     icecream: [
       ["杯子状态", "CUP STATES", cupStates.map(([zh, en, detailZh, detailEn]) => [`${zh}：${detailZh}`, `${en}: ${detailEn}`])],
       ["状态流转", "STATE TRANSITIONS", cupTransitions],
-      ["核心规则", "CORE RULES", [["每个杯子同一时间只保留一个活动批次，历史记录独立保留。", "Each cup has one active batch at a time; history remains separate."], ["状态来自用户操作和时间推算，不代表机器实时状态。", "States come from user actions and time estimates, not live machine data."]]],
+      ["核心规则", "CORE RULES", [["杯卡显示本次制作的冷冻倒计时，点开可查看同一批次的进度。", "The cup card shows the batch’s freeze countdown. Tap the card to view that batch’s progress."], ["每个杯子同一时间只保留一个活动批次，历史记录独立保留。", "Each cup has one active batch at a time; history remains separate."], ["状态来自用户操作和时间推算，不代表机器实时状态。", "States come from user actions and time estimates, not live machine data."]]],
     ],
     cups: [
-      ["管理对象", "MANAGED OBJECTS", [["管理 CUP 1–3 的名称、识别颜色和备注。", "Manage the name, identification color, and note for CUP 1–3."], ["列表同时读取每个杯子的当前批次状态与下一步动作。", "The list also reads each cup's active batch state and next action."]]],
+      ["管理对象", "MANAGED OBJECTS", [["通过名称区分杯子，可编辑名称和识别颜色。", "Identify cups by name and edit their names and colors."], ["列表同时读取每个杯子的当前批次状态与下一步动作。", "The list also reads each cup's active batch state and next action."]]],
       ["杯子状态", "CUP STATES", cupStates.map(([zh, en, detailZh, detailEn]) => [`${zh}：${detailZh}`, `${en}: ${detailEn}`])],
       ["限制", "LIMITS", [["杯子资料页不能直接修改制作状态、余量或历史。", "Cup profile editing cannot directly change batch state, leftovers, or history."]]],
     ],
-    "cup-timer": [
-      ["计时规则", "TIMER RULES", [["每个杯子可单独计时，默认 24 小时，可修改为 1 分钟到 168 小时。", "Each cup has an independent timer, defaulting to 24 hours and adjustable from 1 minute to 168 hours."], ["点击完成后返回来源页；对应杯子只显示手动计时，不显示食谱名称。", "Done returns to the previous page; the selected cup shows the manual timer without a recipe name."], ["修改时长沿用原开始时间；重新开始则从现在起计时。", "Editing duration keeps the original start time; restarting begins now."]]],
-      ["状态边界", "STATUS BOUNDARY", [["计时结束仅提醒检查实际食材，不更改杯子制作状态。", "Finishing the timer only prompts a physical check and never changes the cup's making status."]]],
-    ],
     "cup-detail": [
-      ["信息来源", "DATA SOURCES", [["基础资料来自杯子档案；当前状态来自 cupRuntime；历史记录按 cupId 关联。", "Profile data comes from the cup record, current state from cupRuntime, and history is linked by cupId."]]],
-      ["动作规则", "ACTION RULES", [["当前状态决定入口：继续备料、查看倒计时或上机指引；旧记录只读保留。", "Current state opens prep, countdown, or machine guidance; legacy records remain read-only."], ["已有任务的杯子如需新建制作，先确认替换，原批次记录保留。", "Starting a new batch on an occupied cup requires confirmation; its old record remains."]]],
+      ["信息来源", "DATA SOURCES", [["杯子档案保存基础资料；制作任务提供当前状态；批次记录按关联杯子展示。", "Cup profiles store basic details, tasks provide the current state, and batches appear in the history of their linked cups."]]],
+      ["动作规则", "ACTION RULES", [["当前状态决定入口：继续备料、查看倒计时或上机指引。", "Current state opens prep, countdown, or machine guidance."], ["杯子历史展示关联且已冷冻到时的批次。替换占用中的杯子前需要确认。", "Cup history shows linked batches whose freezer timer ended. Replacing a batch on an occupied cup requires confirmation."]]],
     ],
     "cup-edit": [
-      ["允许修改", "EDITABLE", [["杯子名称、识别颜色、使用备注。", "Cup name, identification color, and usage note."]]],
+      ["允许修改", "EDITABLE", [["杯子名称、识别颜色。", "Cup name and identification color."]]],
       ["禁止修改", "NOT EDITABLE", [["当前制作状态、活动批次、制作历史、余量和建议食用期限。", "Current making state, active batch, history, leftovers, and suggested use-by time."]]],
     ],
     tasks: [
-      ["排序逻辑", "SORTING", [["预计可制作的杯子优先，其次是备料与冷冻中的杯子。", "Estimated-ready cups appear first, followed by preparing and freezing cups."], ["旧批次状态保留，但不再提示补录结果或余量。", "Older batch states remain without prompting result or leftover entry."]]],
+      ["排序逻辑", "SORTING", [["预计可上机制作的杯子优先，其次是备料与冷冻中的杯子。", "Estimated-ready cups appear first, followed by preparing and freezing cups."], ["旧批次状态保留，但不再提示补录结果或余量。", "Older batch states remain without prompting result or leftover entry."]]],
       ["任务来源", "TASK SOURCE", [["每个非空闲杯子的 cupRuntime 对应一个活动任务。", "Each non-available cupRuntime corresponds to one active task."]]],
     ],
     "task-detail": [
@@ -2521,20 +2804,12 @@ function renderLogicPanel() {
       ["选择食谱", "CHOOSE RECIPE", [["搜索入口与食谱中心一致，点击进入搜索页，查看详情后选择食谱并返回。", "Search works like the recipe center: open search, view details, then choose a recipe and return."], ["页面只提示食谱列出的潜在过敏原，不记录成员档案，也不判断是否适合个人。", "The page only shows listed potential allergens; it does not store member profiles or judge personal suitability."]]],
     ],
     "make-portion": [
-      ["创建批次", "CREATE BATCH", [["选择份量后立即更新下方食材用量，再确认实体杯。", "Changing portion immediately updates ingredient amounts below; then confirm the physical cup."], ["点击下一步后写入当前杯子的批次快照，并将状态改为备料中。", "Next writes the batch snapshot to the selected cup and changes its state to Preparing."]]],
-      ["选择规则", "SELECTION RULES", [["APP 杯子状态只作参考，不强制阻止用户选择手中的实体杯。", "The app's cup state is reference only and does not block selection of the physical cup in hand."], ["份量决定食材用量和热量换算。", "Portion controls ingredient and calorie scaling."]]],
-    ],
-    "freeze-confirm": [
-      ["状态流转", "STATE TRANSITION", [["进入页面时杯子保持备料中；点击“已入冻”后改为冷冻中。", "The cup remains Preparing on entry and changes to Freezing after confirming it is in the freezer."], ["启动 10 秒演示倒计时；实际冷冻仍需至少 24 小时，不读取机器或冰箱实时数据。", "Starts a 10-second demo countdown; actual freezing still requires at least 24 hours. No live machine or freezer data is read."]]],
-      ["记录范围", "RECORDING SCOPE", [["保存实际入冻日期与时间，可补录或修改；倒计时在刷新后恢复，结束仅变为预计可制作。", "Save or edit the actual freezer date and time. The countdown survives refresh and ends at Estimated ready."], ["倒计时结束后收起备料教程，并在倒计时下方直接展开上机步骤；用户仍需人工确认实际冻实。", "When the countdown ends, collapse prep and show machine steps below it; the user still checks that the mixture is fully frozen."]]],
+      ["制作分量", "BATCH SIZE", [["默认 500 mL。点「自定义」时预填 2000 mL，修改后食材用量实时换算。", "Defaults to 500 mL. Custom starts at 2000 mL and updates ingredient amounts as you type."]]],
+      ["确认冷冻", "CONFIRM FREEZING", [["杯子可选，多杯份量支持多选，数量不匹配只提示。确认冷冻后立即计时。", "Cup linking is optional. Larger batches can link several cups. A quantity mismatch is advisory. Confirming starts the timer."]]],
     ],
     "freeze-countdown": [
-      ["倒计时逻辑", "COUNTDOWN LOGIC", [["根据用户确认的入冻时间推算剩余时间。", "Remaining time is estimated from the user-confirmed freeze time."], ["倒计时结束后状态从冷冻中变为预计可制作。", "When the countdown ends, state changes from Freezing to Estimated ready."]]],
-      ["限制", "LIMITS", [["倒计时不是冰箱温度或杯体状态检测，用户仍需确认实际冷冻情况。", "The countdown does not detect freezer temperature or cup condition; the user must verify actual freezing."]]],
-    ],
-    "machine-program": [
-      ["开始条件", "START CONDITION", [["杯子达到预计可制作后，用户取出并人工核对 CUP 编号。", "After the cup is estimated ready, the user removes it and manually checks the CUP number."], ["用户在实体机器安装部件、选择程序并按键启动，APP 不启动机器。", "The user assembles parts, selects the program, and presses the physical machine button; the app does not start it."]]],
-      ["引导结束", "GUIDE EXIT", [["查看教程不会推断机器已完成；结束引导仅归档查看记录并释放任务占位。", "Viewing the guide does not imply machine completion; finishing it only archives a guide-viewed record and releases the task."], ["不再要求选择已完成、未完成、取消或填写余量。", "No completed, incomplete, cancelled, or leftovers form is required."]]],
+      ["倒计时", "COUNTDOWN", [["首屏显示冷冻开始时间和倒计时。下方保留食谱、份量、关联杯子及食材用量，冷冻到时后也可查看。", "The freezing start time and countdown appear first. The recipe, size, cups and ingredients remain below after the countdown ends."]]],
+      ["冷冻到时", "FREEZER TIMER ENDED", [["到时后显示冷冻结束时间、可上机制作状态和推荐程序，批次自动留档。用户按需查看指引，并在机器本体操作。", "When the timer ends, the app shows the freezing end time, readiness and the recommended program, and saves the batch. Users can view the guide and operate the machine."]]],
     ],
   };
   const simpleLogic = {
@@ -2546,16 +2821,19 @@ function renderLogicPanel() {
     devices: [["添加 IM01 后，设备卡读取已保存杯子的记录，汇总杯子数量和状态。", "After adding IM01, the card summarizes saved cups and their states."], ["点击 IM01 卡片进入设备详情；非联网设备不展示在线、连接或实时进度。", "The IM01 card opens device detail; the offline device shows no online, connection, or live-progress state."]],
     community: [["承接食谱评论、制作成果和原创投稿，内容由用户主动发布。", "Hosts recipe comments, making results, and original submissions initiated by users."], ["评论可点赞、举报和官方回复；投稿需经过审核后公开。", "Comments support likes, reports, and official replies; submissions require review before publication."]],
     mine: [["聚合 Momcozy 全局个人资料、家庭成员、设备资产和服务入口。", "Aggregates global Momcozy profile, household, device assets, and service entries."], ["IM01 专属资产进入冰淇淋机个人空间管理，避免与全局资产混用。", "IM01-specific assets are managed in the ice cream maker space rather than mixed with global assets."]],
-    "icecream-mine": [["只聚合 IM01 的杯子、制作记录、收藏、最近查看和配件订单。", "Aggregates only IM01 cups, records, favorites, recents, and accessory orders."], ["所有入口复用对应业务页，不在个人空间内复制编辑逻辑。", "Entries reuse their business screens instead of duplicating editing logic here."]],
+    "icecream-mine": [["只聚合 IM01 的杯子、制作记录、收藏、做过的食谱、最近查看和配件订单。", "Aggregates only IM01 cups, records, favorites, recipes made, recents, and accessory orders."], ["所有入口复用对应业务页，不在个人空间内复制编辑逻辑。", "Entries reuse their business screens instead of duplicating editing logic here."]],
     recipes: [["按推荐、专题和分类组织食谱，最终都进入统一食谱详情。", "Organizes recipes by recommendations, collections, and categories, all leading to one detail model."], ["搜索、筛选、收藏和最近查看是不同入口，共用同一食谱数据。", "Search, filters, favorites, and recents are separate entries over the same recipe data."]],
-    "recipe-results": [["搜索词匹配名称、食材或标签，再叠加饮食偏好与程序筛选；数量按实际结果显示。", "Match names, ingredients, or tags, then filter dietary preferences and programs; counts reflect actual matches."], ["点击食谱进入对应详情，不改变当前制作选择。", "Opening a result shows that recipe without changing the batch selection."]],
+    "recipe-results": [isMakingRecipeSearch()
+      ? ["从实际食谱中搜索，仅使用本次选择的冰品种类。", "Search the recipe catalog using the dessert type selected for this search."]
+      : ["搜索词与食谱范围、标签及所选冰品种类一起筛选；显示实际结果数量。", "Combine the search term with the collection, tags, and selected dessert type; show the actual result count."], ["点击食谱进入对应详情，不改变当前制作选择。", "Opening a result shows that recipe without changing the batch selection."]],
     "recipe-search": [["空输入展示历史搜索与食材建议；输入时实时联想，点击建议或提交后展示食谱结果。", "Shows recent searches and ingredients when empty, live suggestions while typing, and results after selection or submission."], ["历史按最近使用去重，最多 8 条，支持逐条删除和清空全部；输入过程不记录，也不改变制作选择。", "Keeps up to 8 unique recent searches with individual deletion and clear all; typing does not save history or change the making selection."]],
-    "recipe-filter": [["筛选饮食偏好和机器程序；不同类别取交集，同类程序取并集。份量在选择食谱后调整。", "Filter dietary preferences and machine programs. Combine categories and match any selected program; adjust portions after choosing."], ["潜在过敏原只在食谱详情和制作页提示，不作为筛选条件。", "Potential allergens are shown in recipe details and making pages, not used as filters."]],
+    "recipe-filter": [["与食谱中心和搜索共用筛选条件，预览数量与结果一致。", "Shares filters with the recipe center and search. The preview count matches the results."], ["潜在过敏原只在食谱详情和制作页提示，不作为筛选条件。", "Potential allergens are shown in recipe details and making pages, not used as filters."]],
     "recipe-detail": [["份量切换同步换算食材用量；详情固定展示潜在过敏原、步骤、冷冻时间和机器程序。", "Changing portion recalculates ingredients; detail shows potential allergens, steps, freeze time, and machine program."], ["点击开始制作后把当前食谱带入第 1 步，再确认份量和杯子。", "Start making carries the recipe into Step 1, followed by portion and cup confirmation."], ["过敏原提示不能替代包装标签和交叉接触核对。", "Allergen guidance does not replace label and cross-contact checks."]],
     favorites: [["只展示用户主动收藏的食谱；取消收藏后从列表移除。", "Shows only user-saved recipes; removing a favorite removes it from the list."], ["收藏不创建制作批次，开始制作仍需进入确认页。", "Saving a recipe does not create a batch; making still begins from confirmation."]],
+    "prepared-recipes": [["每个冷冻到时的食谱只显示一张卡片，点开查看食谱详情。", "Show one card per recipe whose freezer timer ended. Tap a card to open its details."]],
     recent: [["按最近打开食谱详情的时间倒序排列。", "Orders recipes by most recent detail-page view."], ["最近查看用于快速返回，不等于收藏或制作记录。", "Recents provide quick return and are neither favorites nor making records."]],
-    records: [["展示已结束引导的参考记录与旧制作记录，按时间倒序排列。", "Shows finished guide references and older making records in reverse chronological order."], ["旧结果与余量只读保留，不再要求新用户登记。", "Older results and leftovers remain readable, with no new logging required."]],
-    "record-detail": [["新记录仅保存食谱、份量、杯子与指引查看时间，不推断机器结果。", "New records keep the recipe, portion, cup, and guide-viewed time without inferring a machine result."], ["旧记录详情只读；后续食谱或杯子资料变化不回写旧记录。", "Older details remain read-only; later recipe or cup edits do not rewrite them."]],
+    records: [["冷冻到时自动计为制作完成并生成记录，同一批分装多杯只计一次。按时间或食谱查看的是同一批记录。", "A batch counts as made and is saved when the freezer timer ends, once per batch. Both views show the same records."]],
+    "record-detail": [["查看批次归档时的食谱、份量、关联杯子和冷冻起止时间。", "See the saved recipe, batch size, linked cups, and freezer start and end times."]],
     support: [["目录条目进入统一步骤详情，展示操作示意、如何操作与注意事项。", "Directory items open a shared step-detail layout with illustrations, instructions, and precautions."], ["目录底部与详情右上角可进入 Ask CozyAI；当前为本地问答演示。", "Ask CozyAI is available at the bottom of the directory and top right of each guide; Q&A is a local demo."]],
     "support-guide": [["步骤详情的两项说明可独立展开或收起；返回后回到帮助目录。", "The two detail sections expand independently; Back returns to the help directory."], ["右上角 Ask CozyAI 打开设备问答演示，不启动或控制机器。", "Ask CozyAI opens the device Q&A demo without starting or controlling the machine."]],
     "support-ai": [["支持输入问题和查看相关操作指引，使用本地示例回答，未接入外部 AI 服务。", "Accepts questions and links to relevant guides using local example answers; no external AI service is connected."], ["问答不读取或修改当前制作任务与历史记录。", "Q&A does not read or modify active batches or historical records."]],
@@ -2582,7 +2860,7 @@ function renderLogicPanel() {
     device: ["所有杯子与任务状态统一读取用户记录；状态决定下一步入口，APP 信息仅供参考。", "Cup and task states come from user records. State determines the next action, and app information is reference only."],
     recipe: ["食谱内容支持查找与筛选；过敏原仅作提示，仍需用户核对包装与交叉接触风险。", "Recipes support discovery and filters; allergen information is a notice only, and users must still verify labels and cross-contact risks."],
     making: ["记录入冻时间后查看机器操作；APP 不要求登记机器结果或余量，也不读取实时进度。", "After recording freezer time, view machine guidance. The app asks for no machine result or leftovers and reads no live progress."],
-    record: ["新记录仅保存指引查看快照；旧结果与余量记录继续只读保留。", "New records keep guide-viewing snapshots only; older results and leftovers remain read-only."],
+    record: ["冷冻到时自动生成制作记录，同批只计一次。", "The freezer timer creates one making record per batch when it ends."],
     support: ["帮助内容用于识别、安装、操作和排查；出现异常过热、异味或损伤时必须停止使用并联系售后。", "Help covers identification, assembly, operation, and troubleshooting; overheating, odor, or damage requires stopping use and contacting support."],
     community: ["分享与投稿基于用户主动操作，内容需经过举报、审核和平台治理机制。", "Sharing and submissions are user-initiated and governed through reporting, review, and moderation."],
     accessory: ["配件信息以 IM01 适配关系为核心，订单页只展示购买、物流与售后状态。", "Accessory information centers on IM01 compatibility, while order screens cover purchase, delivery, and service status."],
@@ -2631,17 +2909,19 @@ function renderControls() {
 }
 
 function render() {
-  pendingBatchReplacement = null;
-  replacementTrigger = null;
+  activeConfirmation = null;
   if (state.route === "task-detail") state.route = cupTarget();
   if (!renderers[state.route]) state.route = "devices";
   const returningToBatch = lastRenderedRoute === "make-recipe"
     || lastRenderedRoute === "make-portion"
-    || lastRenderedRoute === "freeze-confirm"
-    || (lastRenderedRoute === "recipe-detail" && (state.recipeOrigin === "make-recipe" || state.recipeSearchOrigin === "make-recipe"))
+    || lastRenderedRoute === "recipe-detail"
     || (navigationRestoring && navigationCurrent?.route === "make-recipe");
   if (state.route === "make-recipe" && !returningToBatch && !navigationRestoring) {
-    state.cup = Object.keys(CUP_DEFINITIONS).find((id) => getCupRuntime(id).status === "available") || state.cup;
+    state.makingPortion = DEFAULT_MAKING_PORTION;
+    state.customMakingPortion = false;
+    state.customPortionDraft = null;
+    state.makingCupIds = [];
+    saveState();
   }
   lastRenderedRoute = state.route;
   renderControls();
@@ -2672,16 +2952,10 @@ function render() {
   }
   renderLogicPanel();
   app.querySelector(".mobile-scroll")?.scrollTo(0, 0);
-  if (navigationRestoring) app.querySelector(".mobile-scroll")?.scrollTo(0, navigationCurrent?.scrollTop || 0);
-  if (timerCupToReveal && cupTrack) {
-    const card = [...cupTrack.querySelectorAll(".cup-card")].find((item) => item.dataset.cup === timerCupToReveal);
-    const scroll = app.querySelector(".mobile-scroll");
-    if (card && scroll) {
-      cupTrack.scrollLeft += card.getBoundingClientRect().left - cupTrack.getBoundingClientRect().left - 8;
-      scroll.scrollTop += card.getBoundingClientRect().top - scroll.getBoundingClientRect().top - 16;
-    }
+  if (navigationRestoring) {
+    app.querySelector(".mobile-scroll")?.scrollTo(0, navigationCurrent?.scrollTop || 0);
+    cupTrack?.scrollTo(navigationCurrent?.cupScrollLeft || 0, 0);
   }
-  timerCupToReveal = null;
   navigationRestoring = false;
   navigationCurrent = navigationFrame();
   saveNavigation();
@@ -2692,7 +2966,7 @@ function navigationFrame() {
     route: state.route,
     cup: state.cup,
     recordId: state.recordId,
-    recordStep: state.recordStep,
+    selectedBatchId: state.selectedBatchId,
     detailRecipeIndex: state.detailRecipeIndex,
     recipeOrigin: state.recipeOrigin,
     recipeSearchOrigin: state.recipeSearchOrigin,
@@ -2715,7 +2989,7 @@ function returnToPrevious(fallback) {
     navigate(fallback);
     return;
   }
-  for (const key of ["cup", "recordId", "recordStep", "detailRecipeIndex", "recipeOrigin", "recipeSearchOrigin"]) {
+  for (const key of ["cup", "recordId", "selectedBatchId", "detailRecipeIndex", "recipeOrigin", "recipeSearchOrigin"]) {
     if (previous[key] !== undefined && (key !== "cup" || CUP_DEFINITIONS[previous.cup])) state[key] = previous[key];
   }
   supportGuideIndex = previous.supportGuideIndex ?? 0;
@@ -2728,14 +3002,19 @@ function returnToPrevious(fallback) {
 }
 
 function navigate(target) {
+  target = resolveLegacyRoute(target);
   if (target === "task-detail") target = cupTarget();
   if (!renderers[target]) return;
   if (target === "recipe-search" && target !== state.route) {
     if (state.route !== "recipe-results") state.recipeSearchOrigin = state.route;
+    if (state.route === "make-recipe") state.makingRecipeType = "";
     state.recipeSearchDraft = state.route === "make-recipe" ? "" : state.recipeQuery;
     state.recipeHistoryEditing = false;
   }
-  if (target === "recipes") state.recipeSearchOrigin = "recipes";
+  if (target === "recipes") {
+    state.recipeSearchOrigin = "recipes";
+    state.recipeType = "";
+  }
   if (target !== state.route) {
     const previousIndex = target === "support-guide" ? -1 : navigationTrail.findLastIndex((entry) => entry.route === target);
     if (["home", "devices", "community", "mine"].includes(target)) navigationTrail = [];
@@ -2744,7 +3023,11 @@ function navigate(target) {
       navigationTrail = navigationCurrent?.route === "devices" ? [navigationCurrent] : [];
     }
     else if (navigationCurrent) {
-      navigationTrail.push({ ...navigationCurrent, scrollTop: app.querySelector(".mobile-scroll")?.scrollTop || 0 });
+      navigationTrail.push({
+        ...navigationCurrent,
+        scrollTop: app.querySelector(".mobile-scroll")?.scrollTop || 0,
+        cupScrollLeft: app.querySelector("#overview-cups")?.scrollLeft || 0,
+      });
       navigationTrail = navigationTrail.slice(-40);
     }
   }
@@ -2764,62 +3047,140 @@ function showToast(zh, en) {
   toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1800);
 }
 
-function showBatchReplacementDialog(routeTarget) {
-  const cup = getCupProfile(state.cup);
-  replacementTrigger = document.activeElement;
-  pendingBatchReplacement = { routeTarget, cupId: state.cup, batchId: cup.runtime.batchId };
-  app.insertAdjacentHTML("beforeend", `<div class="batch-dialog-backdrop" data-action="cancel-batch-replacement">
-    <section class="batch-dialog" role="alertdialog" aria-modal="true" aria-labelledby="batch-dialog-title" aria-describedby="batch-dialog-description">
-      <div class="batch-dialog-mark" aria-hidden="true">!</div>
-      <h2 id="batch-dialog-title">${T("替换当前杯的制作任务？", "Replace this cup's current batch?")}</h2>
-      <p id="batch-dialog-description">${T(`${cup.cupId} 已有制作记录。请先确认手中的实体杯可以使用；替换后，原批次会保存到历史记录。`, `${cup.cupId} already has a batch. Check that the physical cup is ready to use. The previous batch will be saved to history.`)}</p>
-      <div class="batch-dialog-actions">
-        ${button("取消", "Cancel", "", "secondary", false, 'data-action="cancel-batch-replacement"')}
-        ${button("确认替换", "Replace batch", "", "primary", false, 'data-action="confirm-batch-replacement"')}
+function showConfirmationDialog({ title, description, confirmLabel, variant = "primary", warning = false, trigger = document.activeElement, onConfirm }) {
+  activeConfirmation = { trigger, onConfirm };
+  app.querySelector(".mobile-page").inert = true;
+  app.insertAdjacentHTML("beforeend", `<div class="confirmation-backdrop">
+    <section class="confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmation-title" aria-describedby="confirmation-description">
+      ${warning ? '<div class="confirmation-mark" aria-hidden="true">!</div>' : ""}
+      <h2 id="confirmation-title">${escapeHtml(title)}</h2>
+      <p id="confirmation-description">${escapeHtml(description)}</p>
+      <div class="confirmation-actions">
+        ${button("取消", "Cancel", "", "secondary", false, 'data-action="cancel-confirmation"')}
+        ${button(...confirmLabel, "", variant, false, 'data-action="confirm-dialog"')}
       </div>
     </section>
   </div>`);
-  app.querySelector('.batch-dialog [data-action="cancel-batch-replacement"]').focus();
+  app.querySelector('.confirmation-dialog [data-action="cancel-confirmation"]').focus();
 }
 
-function closeBatchReplacementDialog() {
-  app.querySelector(".batch-dialog-backdrop")?.remove();
-  pendingBatchReplacement = null;
-  if (replacementTrigger?.isConnected) replacementTrigger.focus();
-  replacementTrigger = null;
+function closeConfirmationDialog({ refresh = true } = {}) {
+  const { trigger, refreshPending } = activeConfirmation;
+  activeConfirmation = null;
+  app.querySelector(".confirmation-backdrop")?.remove();
+  app.querySelector(".mobile-page").inert = false;
+  if (!refresh || !refreshPending) {
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    return;
+  }
+  const scrollTop = app.querySelector(".mobile-scroll").scrollTop;
+  render();
+  app.querySelector(".mobile-scroll").scrollTop = scrollTop;
+  const action = trigger?.dataset.action;
+  if (!action) return;
+  const replacement = [...app.querySelectorAll("button[data-action]")].find((button) =>
+    button.dataset.action === action && button.dataset.cupId === trigger.dataset.cupId,
+  );
+  replacement?.focus({ preventScroll: true });
 }
 
-function commitBatchTransition(routeTarget, replaceExisting = false) {
-  if (replaceExisting) recordBatch(state.cup);
-  const batchId = crypto.randomUUID();
-  updateCupRuntime(state.cup, {
-    status: "preparing",
-    recipeZh: getRecipe(state.batchRecipeIndex).zh,
-    recipeEn: getRecipe(state.batchRecipeIndex).en,
-    recipeIndex: state.batchRecipeIndex,
-    ingredients: getRecipeIngredients(state.portion, state.batchRecipeIndex),
-    program: getRecipe(state.batchRecipeIndex).program,
-    batchId,
-    createdAt: formatDateTimeInput(new Date()),
-    endedAt: "",
-    servedAt: "",
-    frozenAt: "",
-    member: "",
-    memberSnapshots: [],
-    portion: state.portion,
-    remaining: "",
-    leftoverExpiry: "",
-    completedAt: "",
-    freezeRemaining: "",
-    result: "",
+function showBatchReplacementDialog(cupIds) {
+  const cupNames = cupIds.map(cupDisplayName).join(T("、", ", "));
+  const replacements = new Map(cupIds.map((id) => [id, getCupRuntime(id).batchId]));
+  showConfirmationDialog({
+    title: T("替换所选杯子的制作任务？", "Replace the selected cups’ batches?"),
+    description: T(`${cupNames} 已有制作任务。请确认实体杯可以用于新批次。`, `${cupNames} already have batches. Check that the physical cups are ready for the new batch.`),
+    confirmLabel: ["确认替换", "Replace batch"],
+    warning: true,
+    onConfirm: () => confirmFreezeBatch(replacements),
   });
-  state.remaining = "100";
-  state.flowBatchId = batchId;
-  state.expiryPreset = "48";
-  state.leftoverExpiry = expiryFromNow(48);
-  state.taskStatus = "complete";
+}
+
+function withoutCup(entry, id) {
+  const ids = recordCupIds(entry);
+  const cupIds = ids.filter((cupId) => cupId !== id);
+  const names = entry.cupName?.split(", ") || [];
+  const cupName = cupIds.map((cupId) => {
+    const savedName = names.length === ids.length ? names[ids.indexOf(cupId)] : "";
+    return savedName || cupDisplayName(cupId) || cupId.toUpperCase().replace("-", " ");
+  }).join(", ");
+  return { ...entry, cupIds, cupName, cupId: entry.cupId === id ? undefined : entry.cupId };
+}
+
+function deleteCup(id) {
+  state.records = state.records.flatMap((record) => {
+    if (!recordCupIds(record).includes(id)) return [record];
+    const updated = withoutCup(record, id);
+    return updated.cupIds.length ? [updated] : [];
+  });
+  for (const [batchId, batch] of Object.entries(state.batches)) {
+    if (!recordCupIds(batch).includes(id)) continue;
+    const updated = withoutCup(batch, id);
+    if (updated.cupIds.length) state.batches[batchId] = updated;
+    else delete state.batches[batchId];
+  }
+  for (const [cupId, runtime] of Object.entries(state.cupRuntime)) {
+    if (cupId !== id && recordCupIds(runtime).includes(id)) state.cupRuntime[cupId] = withoutCup(runtime, id);
+  }
+  state.makingCupIds = state.makingCupIds.filter((cupId) => cupId !== id);
+  const latestReady = state.records.find((record) => record.result === "freeze-ready");
+  const latestRecipe = latestReady ? recordedRecipeIndex(latestReady) : -1;
+  state.lastCompletedRecipeIndex = latestRecipe >= 0 ? latestRecipe : null;
+  if (!state.batches[state.selectedBatchId] && !state.records.some((record) => record.id === state.selectedBatchId)) state.selectedBatchId = "";
+  if (!state.records.some((record) => record.id === state.recordId)) state.recordId = "";
+  delete CUP_DEFINITIONS[id];
+  delete state.cupProfiles[id];
+  delete state.cupRuntime[id];
+  delete legacyCupTimers[id];
+  state.cup = Object.keys(CUP_DEFINITIONS)[0];
   saveState();
-  navigate(routeTarget);
+  navigate("cups");
+}
+
+function confirmFreezeBatch(confirmedReplacements = new Map()) {
+  const cupIds = state.makingCupIds.filter((id) => CUP_DEFINITIONS[id]);
+  const occupied = cupIds.filter((id) => {
+    const runtime = getCupRuntime(id);
+    return !canReuseCupForMaking(runtime.status)
+      && (!confirmedReplacements.has(id) || confirmedReplacements.get(id) !== runtime.batchId);
+  });
+  if (occupied.length) {
+    showBatchReplacementDialog(occupied);
+    return;
+  }
+
+  const recipe = getRecipe(state.batchRecipeIndex);
+  const now = Date.now();
+  const frozenAt = formatDateTimeInput(new Date(now));
+  const batch = {
+    id: crypto.randomUUID(),
+    status: "freezing",
+    recipeIndex: recipe.index,
+    recipeZh: recipe.zh,
+    recipeEn: recipe.en,
+    program: recipe.program,
+    portion: state.makingPortion,
+    ingredients: getRecipeIngredients(state.makingPortion, recipe.index),
+    cupIds,
+    cupName: cupIds.map((id) => getCupProfile(id).name).join(", ") || "",
+    createdAt: frozenAt,
+    frozenAt,
+    freezeEndsAt: now + DEMO_FREEZE_SECONDS * 1000,
+    freezeDemo: true,
+  };
+  state.batches[batch.id] = batch;
+  for (const id of cupIds) {
+    const runtime = getCupRuntime(id);
+    if (runtime.status !== "available") recordBatch(id);
+    state.cupRuntime[id] = {
+      ...batch,
+      batchId: batch.id,
+      managedBatch: true,
+    };
+  }
+  state.selectedBatchId = batch.id;
+  saveState();
+  navigate("freeze-countdown");
 }
 
 function updateBatchRecipeSuggestions(input) {
@@ -2846,21 +3207,14 @@ function closeBatchRecipeSuggestions() {
 }
 
 function activateElement(element) {
-  const batchDialog = app.querySelector(".batch-dialog-backdrop");
-  if (batchDialog) {
-    const dialogAction = element.closest("[data-action]");
-    if (dialogAction?.dataset.action === "cancel-batch-replacement" || element === batchDialog) {
-      closeBatchReplacementDialog();
-    } else if (dialogAction?.dataset.action === "confirm-batch-replacement" && pendingBatchReplacement) {
-      const { routeTarget, cupId, batchId } = pendingBatchReplacement;
-      if (state.route !== "make-portion" || state.cup !== cupId || getCupRuntime(cupId).batchId !== batchId) {
-        closeBatchReplacementDialog();
-        showToast("杯子状态已变化，请重新确认", "Cup status changed. Please review again.");
-        return;
-      }
-      pendingBatchReplacement = null;
-      replacementTrigger = null;
-      commitBatchTransition(routeTarget, true);
+  if (activeConfirmation) {
+    const action = element.closest(".confirmation-dialog button[data-action]")?.dataset.action;
+    if (action === "cancel-confirmation" || element.matches(".confirmation-backdrop")) {
+      closeConfirmationDialog();
+    } else if (action === "confirm-dialog") {
+      const { onConfirm } = activeConfirmation;
+      closeConfirmationDialog({ refresh: false });
+      onConfirm();
     }
     return;
   }
@@ -2882,10 +3236,7 @@ function activateElement(element) {
   }
   const backElement = element.closest('[data-action="navigate-back"]');
   if (backElement) {
-    if (state.route === "record-detail" && state.recordStep > 1 && !backElement.dataset.exitRecord) {
-      state.recordStep -= 1;
-      render();
-    } else returnToPrevious(backElement.dataset.fallback || "icecream");
+    returnToPrevious(backElement.dataset.fallback || "icecream");
     return;
   }
   const routeElement = element.closest("[data-route]");
@@ -2895,29 +3246,18 @@ function activateElement(element) {
       navigationTrail = [];
       navigationCurrent = null;
     }
-    if (routeTarget === "make-recipe" && !["make-recipe", "make-portion", "freeze-confirm", "machine-program"].includes(state.route)) state.flowBatchId = "";
-    if (routeElement.dataset.recordId) { state.recordId = routeElement.dataset.recordId; state.recordStep = 1; }
+    if (routeElement.dataset.recordId) { state.recordId = routeElement.dataset.recordId; }
     if (state.route === "recipe-detail" && routeTarget === "make-recipe") state.batchRecipeIndex = state.detailRecipeIndex;
     if (routeTarget === "recipe-detail") {
       state.detailRecipeIndex = Number(routeElement.dataset.recipeIndex || 0);
       state.recipeOrigin = state.route;
     }
-    if (routeElement.dataset.cup) state.cup = routeElement.dataset.cup;
-    if (routeElement.dataset.transition === "create-batch") {
-      const runtime = getCupRuntime();
-      const revisitingBatch = Boolean(state.flowBatchId && runtime.batchId === state.flowBatchId
-        && runtime.recipeIndex === state.batchRecipeIndex && String(runtime.portion) === String(state.portion));
-      if (revisitingBatch) {
-        saveState();
-        navigate(routeTarget);
-        return;
-      }
-      if (runtime.status !== "available") {
-        showBatchReplacementDialog(routeTarget);
-        return;
-      }
-      commitBatchTransition(routeTarget);
-      return;
+    if (routeElement.dataset.cup) {
+      state.cup = routeElement.dataset.cup;
+      state.selectedBatchId = "";
+    }
+    if (routeTarget === "freeze-countdown") {
+      state.selectedBatchId = routeElement.dataset.batchId || "";
     }
     saveState();
     navigate(routeTarget);
@@ -2930,9 +3270,19 @@ function activateElement(element) {
       state.detailRecipeIndex = Number(routeCard.dataset.recipeIndex || 0);
       state.recipeOrigin = state.route;
     }
-    if (routeCard.dataset.recordId) { state.recordId = routeCard.dataset.recordId; state.recordStep = 1; }
-    if (routeCard.dataset.cup) state.cup = routeCard.dataset.cup;
-    if (routeCard.dataset.timerCup) state.timerCup = routeCard.dataset.timerCup;
+    if (routeCard.dataset.recordId) { state.recordId = routeCard.dataset.recordId; }
+    if (routeCard.dataset.cup) {
+      state.cup = routeCard.dataset.cup;
+      state.selectedBatchId = "";
+      if (routeCard.dataset.routeCard === "make-portion") {
+        const runtime = getCupRuntime(state.cup);
+        state.batchRecipeIndex = runtime.recipeIndex ?? Math.max(0, recordedRecipeIndex(runtime));
+        state.makingPortion = parseMakingPortion(runtime.portion) ?? DEFAULT_MAKING_PORTION;
+        state.customMakingPortion = !MAKING_PORTIONS.includes(state.makingPortion);
+        state.customPortionDraft = null;
+        state.makingCupIds = runtime.cupIds || [state.cup];
+      }
+    }
     saveState();
     navigate(routeCard.dataset.routeCard);
     return;
@@ -2968,100 +3318,63 @@ function activateElement(element) {
     app.querySelector("#support-question")?.focus();
     return;
   }
-  if (action === "record-step") {
-    state.recordStep = Math.max(1, Math.min(4, Number(value) || 1));
+  if (action === "record-history-view") {
+    if (value !== "time" && value !== "recipe" || state.recordHistoryView === value) return;
+    state.recordHistoryView = value;
     render();
+    app.querySelector(`[data-action="record-history-view"][data-value="${value}"]`)?.focus({ preventScroll: true });
+    return;
+  }
+  if (action === "record-history-order") {
+    if (state.recordHistoryView === "recipe") {
+      state.recordRecipeOrder = state.recordRecipeOrder === "most" ? "fewest" : "most";
+    } else {
+      state.recordHistoryOrder = state.recordHistoryOrder === "newest" ? "oldest" : "newest";
+    }
+    render();
+    app.querySelector('[data-action="record-history-order"]')?.focus({ preventScroll: true });
     return;
   }
   if (action === "flow-step") {
     const targetStep = Number(value);
-    const routes = ["make-recipe", "make-portion", "freeze-confirm", "machine-program"];
-    const currentStep = routes.indexOf(state.route) + 1;
-    if (!currentStep || targetStep < 1 || targetStep > 4 || targetStep > currentStep + 1) return;
-    if (targetStep === currentStep) {
-      if (targetStep === 3 && ["ready", "awaiting-result"].includes(getCupRuntime().status)) {
-        app.querySelector(".mobile-scroll")?.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
-      }
-      return;
+    const currentStep = MAKING_STEPS.indexOf(state.route) + 1;
+    if (!currentStep || !MAKING_STEPS[targetStep - 1] || targetStep > currentStep + 1) return;
+    if (targetStep !== currentStep) navigate(MAKING_STEPS[targetStep - 1]);
+    return;
+  }
+  if (action === "recipe-shelf") {
+    if (!RECIPE_SHELVES.some(([id]) => id === value)) return;
+    if (value === "all") {
+      resetRecipeFilters();
+      saveState();
+    } else {
+      state.recipeShelf = value;
     }
-    if (targetStep === 3 && currentStep === 2) {
-      app.querySelector('[data-transition="create-batch"]')?.click();
-      return;
-    }
-    if (targetStep === 4) {
-      if (currentStep !== 3 || !["ready", "awaiting-result"].includes(getCupRuntime().status)) return;
-      scrollToInlineMachineGuide();
-      return;
-    }
-    if (targetStep < currentStep) {
-      const runtime = getCupRuntime();
-      if (runtime.batchId) {
-        state.flowBatchId = runtime.batchId;
-        state.batchRecipeIndex = runtime.recipeIndex ?? state.batchRecipeIndex;
-        state.portion = String(runtime.portion || state.portion);
-        saveState();
-      }
-    }
-    navigate(routes[targetStep - 1]);
+    render();
     return;
   }
   if (action === "recipe-category") {
-    if (!RECIPE_CATEGORIES.some(([id]) => id === value)) return;
-    // Category buttons are single-select. Search results retain their keyword.
-    if (state.route === "recipes") state.recipeQuery = "";
-    state.filters = new Set(value === "all" ? [] : [value]);
+    if (!RECIPE_DIET_TAGS.some(([id]) => id === value)) return;
+    if (state.filters.has(value)) state.filters.delete(value);
+    else state.filters.add(value);
     saveState();
     render();
     return;
   }
-  if (action === "select-timer-cup") {
-    if (!CUP_DEFINITIONS[value]) return;
-    state.timerCup = value;
-    saveState();
-    render();
-    return;
-  }
-  if (action === "restart-manual-timer" || action === "save-manual-timer" || action === "finish-manual-timer") {
-    const hoursValue = app.querySelector("#timer-hours")?.value;
-    const minutesValue = app.querySelector("#timer-minutes")?.value;
-    const hours = Number(hoursValue);
-    const minutes = Number(minutesValue);
-    const durationMinutes = hours * 60 + minutes;
-    if (hoursValue === "" || minutesValue === "" || !Number.isInteger(hours) || !Number.isInteger(minutes)
-      || hours < 0 || minutes < 0 || minutes > 59 || durationMinutes < 1 || durationMinutes > 168 * 60) {
-      showToast("请输入 1 分钟至 168 小时的有效时长", "Enter a duration from 1 minute to 168 hours");
-      return;
-    }
-    const existing = getManualTimer(state.timerCup);
-    const now = Date.now();
-    const startedAt = action === "save-manual-timer" && existing && !existing.completedAt ? existing.startedAt : now;
-    const endsAt = startedAt + durationMinutes * 60000;
-    if (endsAt <= now) {
-      showToast("新时长须大于已计时长，或选择重新开始", "Choose a longer duration or restart the timer");
-      return;
-    }
-    state.cupTimers[state.timerCup] = { startedAt, endsAt, durationMinutes };
-    saveState();
-    if (action !== "restart-manual-timer") {
-      timerCupToReveal = state.timerCup;
-      returnToPrevious("icecream");
-    } else {
-      render();
-      showToast("手动计时已重新开始", "Manual timer restarted");
-    }
-    return;
-  }
-  if (action === "clear-manual-timer") {
-    if (!window.confirm(T("结束并清除这个杯子的手动计时？制作记录不会改变。", "End and clear this cup's manual timer? Making records will not change."))) return;
-    delete state.cupTimers[state.timerCup];
-    saveState();
+  if (action === "recipe-type") {
+    if (!RECIPE_TYPES.some(([id]) => id === value)) return;
+    const field = isMakingRecipeSearch() ? "makingRecipeType" : "recipeType";
+    state[field] = state[field] === value ? "" : value;
     render();
     return;
   }
   if (action === "add-cup") {
-    const number = Math.max(...Object.values(CUP_DEFINITIONS).map((cup) => Number(cup.cupId.replace("CUP ", ""))), ...state.records.map((record) => Number(record.cupId.replace("cup-", "")) || 0)) + 1;
+    const usedIds = [...Object.keys(CUP_DEFINITIONS), ...state.records.flatMap(recordCupIds)];
+    const number = usedIds.reduce((highest, id) => Math.max(highest, Number(/^cup-(\d+)$/.exec(id)?.[1] || 0)), 0) + 1;
     const id = `cup-${number}`;
-    CUP_DEFINITIONS[id] = {cupId: `CUP ${number}`, color: CUP_COLOR_OPTIONS[(number - 1) % CUP_COLOR_OPTIONS.length].value, count: "0", noteZh: "", noteEn: ""};
+    let nameNumber = number;
+    while (cupNameTaken(`CUP ${nameNumber}`)) nameNumber += 1;
+    CUP_DEFINITIONS[id] = {cupId: `CUP ${nameNumber}`, color: CUP_COLOR_OPTIONS[(number - 1) % CUP_COLOR_OPTIONS.length].value, count: "0", noteZh: "", noteEn: ""};
     state.cupRuntime[id] = {...DEFAULT_CUP_RUNTIME["cup-3"]};
     state.cup = id;
     saveState();
@@ -3070,20 +3383,27 @@ function activateElement(element) {
   }
   if (action === "delete-cup") {
     const id = actionElement.dataset.cupId;
+    if (!Object.hasOwn(CUP_DEFINITIONS, id)) return;
     if (Object.keys(CUP_DEFINITIONS).length === 1) {
       showToast("请至少保留一个杯子", "Keep at least one cup");
       return;
     }
-    if (!window.confirm(T("删除该杯子的资料？历史记录将保留。", "Delete this cup profile? Its history will be kept."))) return;
-    if (getCupRuntime(id).status !== "available") recordBatch(id);
-    delete CUP_DEFINITIONS[id];
-    delete state.cupProfiles[id];
-    delete state.cupRuntime[id];
-    delete state.cupTimers[id];
-    state.cup = Object.keys(CUP_DEFINITIONS)[0];
-    if (state.timerCup === id) state.timerCup = state.cup;
-    saveState();
-    navigate("cups");
+    const name = cupDisplayName(id);
+    const shared = [...recordsForCup(id), ...Object.values(state.batches)].some((entry) => {
+      const cupIds = recordCupIds(entry);
+      return cupIds.includes(id) && cupIds.some((cupId) => cupId !== id);
+    });
+    showConfirmationDialog({
+      title: T(`删除「${name}」？`, `Delete “${name}”?`),
+      description: (shared
+        ? T("只关联该杯的制作记录将永久删除。多杯批次仍保留在其他关联杯子中。", "Records linked only to this cup will be permanently deleted. Shared batches will remain linked to the other cups.")
+        : T("该杯子的制作记录将一并删除，且无法恢复。", "This cup’s making history will also be deleted and can’t be restored."))
+        + T("请确认是否删除？", " Do you want to delete this cup?"),
+      confirmLabel: ["确认", "Confirm"],
+      variant: "danger",
+      trigger: actionElement,
+      onConfirm: () => deleteCup(id),
+    });
     return;
   }
   if (action === "add-member") {
@@ -3110,7 +3430,9 @@ function activateElement(element) {
   if (action === "remake-record") {
     const record = state.records.find((item) => item.id === value);
     if (!record) return;
-    state.batchRecipeIndex = record.recipeIndex ?? 0;
+    const index = recordedRecipeIndex(record);
+    if (index < 0) return;
+    state.batchRecipeIndex = index;
     state.portion = record.portion;
     state.cup = Object.keys(CUP_DEFINITIONS).find((id) => getCupRuntime(id).status === "available") || state.cup;
     saveState();
@@ -3164,20 +3486,55 @@ function activateElement(element) {
     navigate("devices");
     return;
   }
-  if (action === "confirm-frozen") {
-    if (getCupRuntime().status !== "ready" && getCupRuntime().status !== "awaiting-result") return;
-    navigate("freeze-confirm");
-    requestAnimationFrame(scrollToInlineMachineGuide);
+  if (action === "confirm-freeze-batch") {
+    if (state.route === "make-portion" && !invalidCustomPortion()) confirmFreezeBatch();
     return;
   }
-  if (action === "finish-guidance") {
-    if (!["ready", "awaiting-result"].includes(getCupRuntime().status)) return;
-    const viewedAt = formatDateTimeInput(new Date());
-    updateCupRuntime(state.cup, {result: "guidance-viewed", guideViewedAt: viewedAt, endedAt: viewedAt});
-    recordBatch(state.cup);
-    resetCupRuntime(state.cup);
+  if (action === "resume-legacy-prep") {
+    const batch = currentFreezeBatch();
+    if (batch.recipeIndex !== undefined) state.batchRecipeIndex = batch.recipeIndex;
+    state.makingPortion = parseMakingPortion(batch.portion) ?? DEFAULT_MAKING_PORTION;
+    state.customPortionDraft = null;
+    state.customMakingPortion = !MAKING_PORTIONS.includes(state.makingPortion);
+    state.makingCupIds = batch.status === "preparing" ? batch.cupIds : [];
     saveState();
-    navigate("icecream");
+    navigate("make-portion");
+    return;
+  }
+  if (action === "making-portion") {
+    if (value !== "custom" && !MAKING_PORTIONS.includes(value)) return;
+    if (value === "custom" && !state.customMakingPortion && state.route === "make-portion") {
+      state.makingPortion = DEFAULT_CUSTOM_MAKING_PORTION;
+    }
+    state.customMakingPortion = value === "custom";
+    if (!state.customMakingPortion) {
+      state.customPortionDraft = null;
+      state.makingPortion = value;
+      if (Number(value) <= 500) state.makingCupIds = state.makingCupIds.slice(0, 1);
+    }
+    saveState();
+    const scroll = app.querySelector(".mobile-scroll")?.scrollTop || 0;
+    render();
+    app.querySelector(".mobile-scroll")?.scrollTo(0, scroll);
+    const input = app.querySelector("#custom-making-portion-input");
+    if (input) {
+      input.focus();
+      input.select();
+    } else {
+      app.querySelector(`[data-action="making-portion"][data-value="${value}"]`)?.focus({ preventScroll: true });
+    }
+    return;
+  }
+  if (action === "making-cup" && CUP_DEFINITIONS[value]) {
+    if (state.makingCupIds.includes(value)) {
+      state.makingCupIds = state.makingCupIds.filter((id) => id !== value);
+    } else {
+      state.makingCupIds = Number(state.makingPortion) > 500 ? [...state.makingCupIds, value] : [value];
+    }
+    const picker = app.querySelector("[data-making-cup-picker]");
+    picker.innerHTML = makingCupPicker();
+    picker.querySelector(`[data-value="${value}"]`)?.focus({ preventScroll: true });
+    saveState();
     return;
   }
   if (action === "edit-cup") {
@@ -3188,10 +3545,20 @@ function activateElement(element) {
   }
   if (action === "save-cup") {
     const cup = getCupProfile(state.cup);
-    const name = app.querySelector("#cup-edit-name")?.value.trim() || cup.cupId;
-    const note = app.querySelector("#cup-edit-note")?.value.trim() || "";
+    const nameInput = app.querySelector("#cup-edit-name");
+    const name = nameInput.value.trim();
+    if (!name || cupNameTaken(name, state.cup)) {
+      nameInput.focus();
+      nameInput.select();
+      if (!name) showToast("请输入杯子名称", "Enter a cup name");
+      else showToast("这个名称已被使用，请换一个", "This cup name is taken. Choose another.");
+      return;
+    }
     const color = app.querySelector('input[name="cup-color"]:checked')?.value || cup.color;
-    state.cupProfiles = { ...state.cupProfiles, [state.cup]: { name, note, color } };
+    state.cupProfiles = { ...state.cupProfiles, [state.cup]: { ...state.cupProfiles[state.cup], name, color } };
+    for (const batch of Object.values(state.batches)) {
+      if (batch.cupIds.includes(state.cup)) batch.cupName = batch.cupIds.map(cupDisplayName).join(", ");
+    }
     saveState();
     showToast("杯子资料已保存", "Cup details saved");
     returnToPrevious("cups");
@@ -3218,19 +3585,6 @@ function activateElement(element) {
     state.member = state.selectedMemberIds.length === state.memberProfiles.length && state.memberProfiles.length
       ? "family" : state.selectedMemberIds[0] || "";
   }
-  if (action === "start-freeze-countdown") {
-    const value = app.querySelector("#freeze-start")?.value;
-    const startedAt = new Date(value).getTime();
-    if (!Number.isFinite(startedAt) || startedAt > Date.now()) {
-      showToast("请选择有效且不晚于当前的入冻时间", "Choose a valid freezer time no later than now");
-      return;
-    }
-    const freezeEndsAt = Date.now() + 10000;
-    updateCupRuntime(state.cup, { status: "freezing", frozenAt: value, freezeEndsAt, freezeDemo: true, freezeRemaining: "" });
-  }
-  if (action === "demo-freeze-countdown") {
-    updateCupRuntime(state.cup, { status: "freezing", freezeEndsAt: Date.now() + 10000, freezeDemo: true, freezeRemaining: "" });
-  }
   if (action === "toggle-favorite") {
     const index = state.detailRecipeIndex;
     state.favorite = !state.favoriteRecipes.includes(index);
@@ -3248,7 +3602,9 @@ function activateElement(element) {
     if (state.filters.has(value)) state.filters.delete(value);
     else state.filters.add(value);
   }
-  if (action === "reset-filters") state.filters.clear();
+  if (action === "reset-filters") {
+    resetRecipeFilters();
+  }
   if (action === "show-toast") showToast(actionElement.dataset.messageZh || "操作已完成", actionElement.dataset.messageEn || "Action completed");
   saveState();
   render();
@@ -3278,6 +3634,13 @@ document.addEventListener("click", (event) => {
   render();
 }, true);
 document.addEventListener("click", (event) => activateElement(event.target));
+document.addEventListener("toggle", (event) => {
+  const group = event.target;
+  if (!group.isConnected || !group.matches("details[data-record-recipe-group]")) return;
+  const key = group.dataset.recordRecipeGroup;
+  if (group.open) state.expandedRecordRecipes.add(key);
+  else state.expandedRecordRecipes.delete(key);
+}, true);
 document.addEventListener("focusin", (event) => {
   if (event.target.matches("#recipe-query") && state.route === "make-recipe" && !state.batchSearchOpen) {
     state.batchSearchOpen = true;
@@ -3291,13 +3654,21 @@ document.addEventListener("focusin", (event) => {
   }
 });
 document.addEventListener("input", (event) => {
-  if (event.target.matches("#freeze-start")) {
-    const saveAction = app.querySelector("[data-freeze-time-save]");
-    if (saveAction) {
-      const changed = event.target.value !== getCupRuntime().frozenAt;
-      saveAction.hidden = !changed;
-      app.querySelector("[data-freeze-default-action]").hidden = changed;
-    }
+  if (event.target.matches("#custom-making-portion-input")) {
+    state.customPortionDraft = event.target.value;
+    const value = parseMakingPortion(state.customPortionDraft);
+    event.target.setAttribute("aria-invalid", String(!value));
+    app.querySelector("#custom-portion-error").hidden = Boolean(value);
+    const confirm = app.querySelector('[data-action="confirm-freeze-batch"]');
+    if (confirm) confirm.disabled = !value;
+    if (!value) return;
+    state.makingPortion = value;
+    const recipeIndex = state.route === "make-portion" ? state.batchRecipeIndex : state.detailRecipeIndex;
+    app.querySelector("[data-recipe-ingredients]").innerHTML = recipeIngredientRows(getRecipeIngredients(value, recipeIndex));
+    const cups = app.querySelector("[data-making-cup-picker]");
+    if (cups) cups.innerHTML = makingCupPicker();
+    saveState();
+    return;
   }
   if (event.target.matches("#batch-recipe-query")) updateBatchRecipeSuggestions(event.target);
   if (event.target.matches("#recipe-query")) {
@@ -3330,15 +3701,15 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest(".recipe-search-combobox")) closeBatchRecipeSuggestions();
 });
 document.addEventListener("keydown", (event) => {
-  const batchDialog = app.querySelector(".batch-dialog");
-  if (batchDialog) {
+  const dialog = app.querySelector(".confirmation-dialog");
+  if (dialog) {
     if (event.key === "Escape") {
       event.preventDefault();
-      closeBatchReplacementDialog();
+      closeConfirmationDialog();
     } else if (event.key === "Tab") {
-      const buttons = [...batchDialog.querySelectorAll("button")];
+      const buttons = [...dialog.querySelectorAll("button")];
       const next = event.shiftKey ? buttons.at(-1) : buttons[0];
-      if (!batchDialog.contains(document.activeElement) || event.shiftKey && document.activeElement === buttons[0] || !event.shiftKey && document.activeElement === buttons.at(-1)) {
+      if (!dialog.contains(document.activeElement) || event.shiftKey && document.activeElement === buttons[0] || !event.shiftKey && document.activeElement === buttons.at(-1)) {
         event.preventDefault();
         next.focus();
       }
@@ -3397,12 +3768,9 @@ document.querySelector("#language-toggle").addEventListener("click", () => {
 });
 
 window.addEventListener("hashchange", () => {
-  const target = window.location.hash.slice(1);
-  if (target === "remaining") {
-    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#cup-detail`);
-    navigate("cup-detail");
-    return;
-  }
+  const requested = window.location.hash.slice(1);
+  const target = resolveLegacyRoute(requested);
+  if (target !== requested) window.history.replaceState(null, "", `#${target}`);
   if (renderers[target] && target !== state.route) {
     const previousIndex = navigationTrail.findLastIndex((entry) => entry.route === target);
     if (previousIndex >= 0) {
@@ -3416,8 +3784,11 @@ window.addEventListener("hashchange", () => {
   render();
 });
 
-if (navigationCurrent?.route === state.route) {
-  for (const key of ["cup", "recordId", "recordStep", "detailRecipeIndex", "recipeOrigin", "recipeSearchOrigin"]) {
+if (startNewBatchFromLink) {
+  navigationTrail = [];
+  navigationCurrent = null;
+} else if (navigationCurrent?.route === state.route) {
+  for (const key of ["cup", "recordId", "selectedBatchId", "detailRecipeIndex", "recipeOrigin", "recipeSearchOrigin"]) {
     if (navigationCurrent[key] !== undefined && (key !== "cup" || CUP_DEFINITIONS[navigationCurrent.cup])) state[key] = navigationCurrent[key];
   }
   supportGuideIndex = navigationCurrent.supportGuideIndex ?? 0;
@@ -3425,7 +3796,4 @@ if (navigationCurrent?.route === state.route) {
 }
 refreshCupFreezeCountdowns();
 render();
-setInterval(() => {
-  refreshCupFreezeCountdowns();
-  refreshManualTimers();
-}, 1000);
+setInterval(refreshCupFreezeCountdowns, 1000);

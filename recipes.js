@@ -1,25 +1,8 @@
-const INGREDIENT_KCAL_PER_100G = {
-  "草莓": 32,
-  "原味酸奶": 61,
-  "香蕉": 89,
-  "蓝莓": 57,
-  "希腊酸奶": 73,
-  "芒果": 60,
-  "椰乳": 197,
-  "青柠汁": 25,
-  "牛油果": 160,
-  "燕麦饮": 46,
-  "可可粉": 228,
-  "牛奶": 61,
-  "淡奶油": 340,
-  "香草提取物": 288,
-};
-
 const RECIPE_DETAILS = [
-  { flavor: "berry", program: "ICE CREAM", allergens: ["dairy"], tags: ["low-sugar"], ingredients: [["草莓", "Strawberries", 175], ["原味酸奶", "Plain yogurt", 125], ["香蕉", "Banana", 75]] },
-  { flavor: "yogurt", program: "ICE CREAM", allergens: ["dairy"], tags: ["high-protein"], ingredients: [["蓝莓", "Blueberries", 150], ["希腊酸奶", "Greek yogurt", 150], ["香蕉", "Banana", 75]] },
-  { flavor: "mango", program: "SORBET", allergens: [], tags: ["vegan", "low-sugar"], ingredients: [["芒果", "Mango", 170], ["椰乳", "Coconut milk", 130], ["青柠汁", "Lime juice", 6]] },
-  { flavor: "avocado", program: "LITE ICE CREAM", allergens: [], tags: ["vegan", "low-sugar"], ingredients: [["牛油果", "Avocado", 100], ["香蕉", "Banana", 150], ["椰乳", "Coconut milk", 100]] },
-  { flavor: "cocoa", program: "ICE CREAM", allergens: ["oats"], tags: ["vegan", "low-sugar"], ingredients: [["香蕉", "Banana", 150], ["燕麦饮", "Oat drink", 150], ["可可粉", "Cocoa powder", 10]] },
-  { flavor: "yogurt", program: "ICE CREAM", allergens: ["dairy"], tags: ["family"], ingredients: [["牛奶", "Milk", 200], ["淡奶油", "Cream", 50], ["香草提取物", "Vanilla extract", 2]] },
+  { flavor: "berry", program: "ICE CREAM", allergens: ["dairy"], tags: ["low-sugar"], type: "fruit-ice-cream", prepSummary: ["草莓洗净去蒂，与原味酸奶、香蕉一起搅匀后装杯。", "Wash and hull the strawberries, then blend with plain yogurt and banana before filling."], ingredients: [["草莓", "Strawberries", 175], ["原味酸奶", "Plain yogurt", 125], ["香蕉", "Banana", 75]] },
+  { flavor: "yogurt", program: "ICE CREAM", allergens: ["dairy"], tags: ["high-protein"], type: "frozen-yogurt", prepSummary: ["蓝莓洗净，与希腊酸奶和香蕉搅匀后装杯。", "Wash the blueberries, then blend with Greek yogurt and banana before filling."], ingredients: [["蓝莓", "Blueberries", 150], ["希腊酸奶", "Greek yogurt", 150], ["香蕉", "Banana", 75]] },
+  { flavor: "mango", program: "SORBET", allergens: [], tags: ["vegan", "low-sugar"], type: "sorbet", prepSummary: ["芒果去皮去核，与椰乳、青柠汁搅匀后装杯。", "Peel and pit the mango, then blend with coconut milk and lime juice before filling."], ingredients: [["芒果", "Mango", 170], ["椰乳", "Coconut milk", 130], ["青柠汁", "Lime juice", 6]] },
+  { flavor: "avocado", program: "LITE ICE CREAM", allergens: [], tags: ["vegan", "low-sugar"], type: "fruit-ice-cream", prepSummary: ["牛油果去皮去核，与香蕉、椰乳搅匀后装杯。", "Peel and pit the avocado, then blend with banana and coconut milk before filling."], ingredients: [["牛油果", "Avocado", 100], ["香蕉", "Banana", 150], ["椰乳", "Coconut milk", 100]] },
+  { flavor: "cocoa", program: "ICE CREAM", allergens: ["oats"], tags: ["vegan", "low-sugar"], type: "regular-ice-cream", prepSummary: ["将香蕉、燕麦饮与可可粉搅匀，确认可可粉没有结块后装杯。", "Blend banana, oat drink and cocoa powder until smooth before filling."], ingredients: [["香蕉", "Banana", 150], ["燕麦饮", "Oat drink", 150], ["可可粉", "Cocoa powder", 10]] },
+  { flavor: "yogurt", program: "ICE CREAM", allergens: ["dairy"], tags: ["family"], type: "regular-ice-cream", prepSummary: ["将牛奶、淡奶油和香草提取物混合均匀后装杯。", "Mix milk, heavy cream and vanilla extract evenly before filling."], ingredients: [["牛奶", "Milk", 200], ["淡奶油", "Cream", 50], ["香草提取物", "Vanilla extract", 2]] },
 ];
